@@ -1,5 +1,6 @@
 import fastify from "fastify";
 import { supabase } from "./supabaseConnection";
+import bcrypt from "bcryptjs";
 
 const app = fastify();
 
@@ -7,6 +8,7 @@ type Users = {
     name: string
     email: string
     password: string
+    newPassword: string
 };
 
 // Rota GET para buscar usuários
@@ -44,6 +46,37 @@ app.post("/users", async (request, reply) => {
         return reply.status(500).send({ error: "Erro ao criar usuário" });
     }
 });
+
+// ✅ Rota para redefinir senha sem token
+app.post("/update-password", async (request, reply) => {
+    try {
+        const { email, newPassword } = request.body as { email: string; newPassword: string };
+
+        if (!email || !newPassword) {
+            return reply.status(400).send({ error: "E-mail e nova senha são obrigatórios." });
+        }
+
+        // Hash da nova senha para segurança
+        const hashedPassword = await bcrypt.hash(newPassword, 8);
+
+        // Atualiza a senha no banco, onde o email for igual ao informado
+        const { error } = await supabase
+            .from("users")
+            .update({ password: hashedPassword })
+            .eq("email", email);
+
+        if (error) {
+            return reply.status(400).send({ error: error.message });
+        }
+
+        return reply.send({ message: "Senha redefinida com sucesso!" });
+
+    } catch (error) {
+        console.error(error);
+        return reply.status(500).send({ error: "Erro ao redefinir senha." });
+    }
+});
+
 
 // Iniciar o servidor
 app.listen({
