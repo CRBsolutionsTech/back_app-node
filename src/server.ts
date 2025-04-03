@@ -1,8 +1,10 @@
 import fastify from "fastify";
 import { supabase } from "./supabaseConnection";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const app = fastify();
+const SECRET_KEY = "seu_segredo_super_seguro"; // 🔑 Defina uma chave segura
 
 type Users = {
     name: string;
@@ -34,8 +36,6 @@ app.get("/register", async (request, reply) => {
 // ✅ Rota POST - Criar usuário
 app.post("/register", async (request, reply) => {
     try {
-        console.log("Dados recebidos:", request.body); // 👀 Verificar dados
-
         const { name, email, password, registro, cpf, celular } = request.body as Users;
 
         if (!name || !email || !password || !registro || !cpf || !celular) {
@@ -58,6 +58,43 @@ app.post("/register", async (request, reply) => {
     }
 });
 
+// ✅ Rota POST - Login usando CPF
+app.post("/login", async (request, reply) => {
+    try {
+        const { cpf, password } = request.body as { cpf: string; password: string };
+
+        if (!cpf || !password) {
+            return reply.status(400).send({ error: "CPF e senha são obrigatórios." });
+        }
+
+        const { data: user, error: userError } = await supabase
+            .from("register")
+            .select("cpf, password, name, email")
+            .eq("cpf", cpf)
+            .single();
+
+        if (userError || !user) {
+            return reply.status(404).send({ error: "CPF não encontrado." });
+        }
+
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return reply.status(401).send({ error: "Senha incorreta." });
+        }
+
+        const token = jwt.sign(
+            { cpf: user.cpf, name: user.name, email: user.email }, 
+            SECRET_KEY, 
+            { expiresIn: "1h" }
+        );
+
+        return reply.send({ message: "Login bem-sucedido!", token });
+    } catch (error) {
+        console.error("Erro no login:", error);
+        return reply.status(500).send({ error: "Erro ao fazer login." });
+    }
+});
+
 // ✅ Rota POST - Resetar senha pelo e-mail
 app.post("/reset-password", async (request, reply) => {
     try {
@@ -67,7 +104,6 @@ app.post("/reset-password", async (request, reply) => {
             return reply.status(400).send({ error: "E-mail e nova senha são obrigatórios." });
         }
 
-        // 🔍 Verifica se o e-mail existe
         const { data: user, error: userError } = await supabase
             .from("register")
             .select("email")
@@ -78,10 +114,8 @@ app.post("/reset-password", async (request, reply) => {
             return reply.status(404).send({ error: "Usuário não encontrado." });
         }
 
-        // 🔒 Criptografa a nova senha
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // 🔄 Atualiza a senha no banco
         const { error } = await supabase
             .from("register")
             .update({ password: hashedPassword })
@@ -90,7 +124,6 @@ app.post("/reset-password", async (request, reply) => {
         if (error) return reply.status(400).send({ error: error.message });
 
         return reply.send({ message: "Senha redefinida com sucesso!" });
-
     } catch (error) {
         console.error("Erro ao redefinir senha:", error);
         return reply.status(500).send({ error: "Erro ao redefinir senha." });

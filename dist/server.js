@@ -42,7 +42,9 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // src/server.ts
 var import_bcryptjs = __toESM(require("bcryptjs"));
+var import_jsonwebtoken = __toESM(require("jsonwebtoken"));
 var app = (0, import_fastify.default)();
+var SECRET_KEY = "seu_segredo_super_seguro";
 app.get("/", async (request, reply) => {
   return reply.send({ message: "\u{1F680} API Fastify rodando com sucesso!" });
 });
@@ -58,7 +60,6 @@ app.get("/register", async (request, reply) => {
 });
 app.post("/register", async (request, reply) => {
   try {
-    console.log("Dados recebidos:", request.body);
     const { name, email, password, registro, cpf, celular } = request.body;
     if (!name || !email || !password || !registro || !cpf || !celular) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
@@ -70,6 +71,31 @@ app.post("/register", async (request, reply) => {
   } catch (error) {
     console.error("Erro ao criar usu\xE1rio:", error);
     return reply.status(500).send({ error: "Erro ao criar usu\xE1rio." });
+  }
+});
+app.post("/login", async (request, reply) => {
+  try {
+    const { cpf, password } = request.body;
+    if (!cpf || !password) {
+      return reply.status(400).send({ error: "CPF e senha s\xE3o obrigat\xF3rios." });
+    }
+    const { data: user, error: userError } = await supabase.from("register").select("cpf, password, name, email").eq("cpf", cpf).single();
+    if (userError || !user) {
+      return reply.status(404).send({ error: "CPF n\xE3o encontrado." });
+    }
+    const passwordMatch = await import_bcryptjs.default.compare(password, user.password);
+    if (!passwordMatch) {
+      return reply.status(401).send({ error: "Senha incorreta." });
+    }
+    const token = import_jsonwebtoken.default.sign(
+      { cpf: user.cpf, name: user.name, email: user.email },
+      SECRET_KEY,
+      { expiresIn: "1h" }
+    );
+    return reply.send({ message: "Login bem-sucedido!", token });
+  } catch (error) {
+    console.error("Erro no login:", error);
+    return reply.status(500).send({ error: "Erro ao fazer login." });
   }
 });
 app.post("/reset-password", async (request, reply) => {
