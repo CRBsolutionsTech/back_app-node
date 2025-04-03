@@ -43,93 +43,44 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 // src/server.ts
 var import_bcryptjs = __toESM(require("bcryptjs"));
 var app = (0, import_fastify.default)();
+app.get("/", async (request, reply) => {
+  return reply.send({ message: "\u{1F680} API Fastify rodando com sucesso!" });
+});
 app.get("/users", async (request, reply) => {
   try {
     const { data: users, error } = await supabase.from("users").select("*");
-    if (error) {
-      throw new Error(error.message);
-    }
-    return reply.send({ value: users });
+    if (error) throw new Error(error.message);
+    return reply.send({ users });
   } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: "Erro ao buscar usu\xE1rios" });
+    console.error("Erro ao buscar usu\xE1rios:", error);
+    return reply.status(500).send({ error: "Erro ao buscar usu\xE1rios." });
   }
 });
 app.post("/users", async (request, reply) => {
   try {
-    const { name, registro, cpf, celular, email, password } = request.body;
-    const { data: createdUser, error } = await supabase.from("users").insert([{
-      name,
-      registro,
-      cpf,
-      celular,
-      email,
-      password
-    }]).select();
-    if (error) {
-      return reply.status(400).send({ error: error.message });
+    const { name, email, password, registro, cpf, celular } = request.body;
+    if (!name || !email || !password || !registro || !cpf || !celular) {
+      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
-    return reply.status(201).send({ value: createdUser ? createdUser[0] : null });
+    const { data: existingUser } = await supabase.from("users").select("id").eq("email", email).single();
+    if (existingUser) {
+      return reply.status(400).send({ error: "E-mail j\xE1 cadastrado." });
+    }
+    const hashedPassword = await import_bcryptjs.default.hash(password, 10);
+    const { data: createdUser, error } = await supabase.from("users").insert([{ name, email, password: hashedPassword, registro, cpf, celular }]).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.status(201).send({ user: createdUser ? createdUser[0] : null });
   } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: "Erro ao criar usu\xE1rio" });
-  }
-});
-app.post("/update-password", async (request, reply) => {
-  try {
-    const { email, newPassword } = request.body;
-    if (!email || !newPassword) {
-      return reply.status(400).send({ error: "E-mail e nova senha s\xE3o obrigat\xF3rios." });
-    }
-    const hashedPassword = await import_bcryptjs.default.hash(newPassword, 8);
-    const { error } = await supabase.from("users").update({ password: hashedPassword }).eq("email", email);
-    if (error) {
-      return reply.status(400).send({ error: error.message });
-    }
-    return reply.send({ message: "Senha redefinida com sucesso!" });
-  } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: "Erro ao redefinir senha." });
-  }
-});
-app.get("/register", async (request, reply) => {
-  try {
-    const { data: register, error } = await supabase.from("register").select("*");
-    if (error) {
-      throw new Error(error.message);
-    }
-    return reply.send({ value: register });
-  } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: "Erro ao buscar usu\xE1rios" });
-  }
-});
-app.post("/register", async (request, reply) => {
-  try {
-    const { name, registro, cpf, celular, email, password } = request.body;
-    const { data: createdRegister, error } = await supabase.from("register").insert([{
-      name,
-      registro,
-      cpf,
-      celular,
-      email,
-      password
-    }]).select();
-    if (error) {
-      return reply.status(400).send({ error: error.message });
-    }
-    return reply.status(201).send({ value: createdRegister ? createdRegister[0] : null });
-  } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: "Erro ao registrar usu\xE1rio" });
+    console.error("Erro ao criar usu\xE1rio:", error);
+    return reply.status(500).send({ error: "Erro ao criar usu\xE1rio." });
   }
 });
 app.listen({
   host: "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 3333
 }).then(() => {
-  console.log("Servidor Funcionando");
+  console.log("\u2705 Servidor Funcionando!");
 }).catch((err) => {
-  console.error("Erro ao iniciar servidor:", err);
+  console.error("\u274C Erro ao iniciar servidor:", err);
   process.exit(1);
 });

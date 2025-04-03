@@ -4,142 +4,67 @@ import bcrypt from "bcryptjs";
 
 const app = fastify();
 
-type Users = {
-    name: string
-    registro: string
-    cpf: string
-    celular: string
-    email: string
-    password: string
-    newPassword: string
+type User = {
+    name: string;
+    email: string;
+    password: string;
+    registro: string;
+    cpf: string;
+    celular: string;
 };
 
-type Register = {
-    name: string
-    registro: string
-    cpf: string
-    celular: string
-    email: string
-    password: string
-    newPassword: string
-};
+// ✅ Rota principal (Home)
+app.get("/", async (request, reply) => {
+    return reply.send({ message: "🚀 API Fastify rodando com sucesso!" });
+});
 
-// Rota GET para buscar usuários
+// ✅ Rota GET - Buscar usuários
 app.get("/users", async (request, reply) => {
     try {
         const { data: users, error } = await supabase.from("users").select("*");
-        if (error) {
-            throw new Error(error.message);
-        }
-        return reply.send({ value: users });
+        if (error) throw new Error(error.message);
+
+        return reply.send({ users });
     } catch (error) {
-        console.error(error);
-        return reply.status(500).send({ error: "Erro ao buscar usuários" });
+        console.error("Erro ao buscar usuários:", error);
+        return reply.status(500).send({ error: "Erro ao buscar usuários." });
     }
 });
 
-// Rota POST para criar usuários
 app.post("/users", async (request, reply) => {
     try {
-        const { name, registro, cpf, celular, email, password } = request.body as Users;
+        console.log("Dados recebidos:", request.body); // 👀 Verificar dados
 
-        const { data: createdUser, error } = await supabase.from("users").insert([{ 
-            name,
-            registro,
-            cpf,
-            celular, 
-            email, 
-            password 
-        }]).select();
+        const { name, email, password, registro, cpf, celular } = request.body as User;
 
-        if (error) {
-            return reply.status(400).send({ error: error.message });
+        if (!name || !email || !password || !registro || !cpf || !celular) {
+            return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
         }
 
-        return reply.status(201).send({ value: createdUser ? createdUser[0] : null });
-    } catch (error) {
-        console.error(error);
-        return reply.status(500).send({ error: "Erro ao criar usuário" });
-    }
-});
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-// ✅ Rota para redefinir senha sem token
-app.post("/update-password", async (request, reply) => {
-    try {
-        const { email, newPassword } = request.body as { email: string; newPassword: string };
-
-        if (!email || !newPassword) {
-            return reply.status(400).send({ error: "E-mail e nova senha são obrigatórios." });
-        }
-
-        // Hash da nova senha para segurança
-        const hashedPassword = await bcrypt.hash(newPassword, 8);
-
-        // Atualiza a senha no banco, onde o email for igual ao informado
-        const { error } = await supabase
+        const { data: createdUser, error } = await supabase
             .from("users")
-            .update({ password: hashedPassword })
-            .eq("email", email);
+            .insert([{ name, email, password: hashedPassword, registro, cpf, celular }])
+            .select();
 
-        if (error) {
-            return reply.status(400).send({ error: error.message });
-        }
+        if (error) return reply.status(400).send({ error: error.message });
 
-        return reply.send({ message: "Senha redefinida com sucesso!" });
-
+        return reply.status(201).send({ user: createdUser ? createdUser[0] : null });
     } catch (error) {
-        console.error(error);
-        return reply.status(500).send({ error: "Erro ao redefinir senha." });
-    }
-});
-
-// Rota GET para registrar usuários
-app.get("/register", async (request, reply) => {
-    try {
-        const { data: register, error } = await supabase.from("register").select("*");
-        if (error) {
-            throw new Error(error.message);
-        }
-        return reply.send({ value: register });
-    } catch (error) {
-        console.error(error);
-        return reply.status(500).send({ error: "Erro ao buscar usuários" });
-    }
-});
-
-// Rota POST para registrar usuários
-app.post("/register", async (request, reply) => {
-    try {
-        const { name, registro, cpf, celular, email, password } = request.body as Register;
-
-        const { data: createdRegister, error } = await supabase.from("register").insert([{ 
-            name,
-            registro,
-            cpf,
-            celular, 
-            email, 
-            password 
-        }]).select();
-
-        if (error) {
-            return reply.status(400).send({ error: error.message });
-        }
-
-        return reply.status(201).send({ value: createdRegister ? createdRegister[0] : null });
-    } catch (error) {
-        console.error(error);
-        return reply.status(500).send({ error: "Erro ao registrar usuário" });
+        console.error("Erro ao criar usuário:", error);
+        return reply.status(500).send({ error: "Erro ao criar usuário." });
     }
 });
 
 
-// Iniciar o servidor
+// ✅ Iniciar servidor
 app.listen({
-    host: '0.0.0.0',
-    port: process.env.PORT ? Number(process.env.PORT) : 3333
+    host: "0.0.0.0",
+    port: process.env.PORT ? Number(process.env.PORT) : 3333,
 }).then(() => {
-    console.log('Servidor Funcionando');
+    console.log("✅ Servidor Funcionando!");
 }).catch(err => {
-    console.error('Erro ao iniciar servidor:', err);
+    console.error("❌ Erro ao iniciar servidor:", err);
     process.exit(1);
 });
