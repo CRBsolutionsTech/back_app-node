@@ -31,6 +31,7 @@ app.get("/register", async (request, reply) => {
     }
 });
 
+// ✅ Rota POST - Criar usuário
 app.post("/register", async (request, reply) => {
     try {
         console.log("Dados recebidos:", request.body); // 👀 Verificar dados
@@ -57,6 +58,44 @@ app.post("/register", async (request, reply) => {
     }
 });
 
+// ✅ Rota POST - Resetar senha pelo e-mail
+app.post("/reset-password", async (request, reply) => {
+    try {
+        const { email, newPassword } = request.body as { email: string; newPassword: string };
+
+        if (!email || !newPassword) {
+            return reply.status(400).send({ error: "E-mail e nova senha são obrigatórios." });
+        }
+
+        // 🔍 Verifica se o e-mail existe
+        const { data: user, error: userError } = await supabase
+            .from("register")
+            .select("email")
+            .eq("email", email)
+            .single();
+
+        if (userError || !user) {
+            return reply.status(404).send({ error: "Usuário não encontrado." });
+        }
+
+        // 🔒 Criptografa a nova senha
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // 🔄 Atualiza a senha no banco
+        const { error } = await supabase
+            .from("register")
+            .update({ password: hashedPassword })
+            .eq("email", email);
+
+        if (error) return reply.status(400).send({ error: error.message });
+
+        return reply.send({ message: "Senha redefinida com sucesso!" });
+
+    } catch (error) {
+        console.error("Erro ao redefinir senha:", error);
+        return reply.status(500).send({ error: "Erro ao redefinir senha." });
+    }
+});
 
 // ✅ Iniciar servidor
 app.listen({

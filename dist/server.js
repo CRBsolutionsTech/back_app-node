@@ -72,6 +72,25 @@ app.post("/register", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao criar usu\xE1rio." });
   }
 });
+app.post("/reset-password", async (request, reply) => {
+  try {
+    const { email, newPassword } = request.body;
+    if (!email || !newPassword) {
+      return reply.status(400).send({ error: "E-mail e nova senha s\xE3o obrigat\xF3rios." });
+    }
+    const { data: user, error: userError } = await supabase.from("register").select("email").eq("email", email).single();
+    if (userError || !user) {
+      return reply.status(404).send({ error: "Usu\xE1rio n\xE3o encontrado." });
+    }
+    const hashedPassword = await import_bcryptjs.default.hash(newPassword, 10);
+    const { error } = await supabase.from("register").update({ password: hashedPassword }).eq("email", email);
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.send({ message: "Senha redefinida com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao redefinir senha:", error);
+    return reply.status(500).send({ error: "Erro ao redefinir senha." });
+  }
+});
 app.listen({
   host: "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 3333
