@@ -6,6 +6,19 @@ const app = fastify();
 
 type Users = {
     name: string
+    registro: string
+    cpf: string
+    celular: string
+    email: string
+    password: string
+    newPassword: string
+};
+
+type Register = {
+    name: string
+    registro: string
+    cpf: string
+    celular: string
     email: string
     password: string
     newPassword: string
@@ -28,10 +41,13 @@ app.get("/users", async (request, reply) => {
 // Rota POST para criar usuários
 app.post("/users", async (request, reply) => {
     try {
-        const { name, email, password } = request.body as Users;
+        const { name, registro, cpf, celular, email, password } = request.body as Users;
 
         const { data: createdUser, error } = await supabase.from("users").insert([{ 
-            name, 
+            name,
+            registro,
+            cpf,
+            celular, 
             email, 
             password 
         }]).select();
@@ -74,6 +90,45 @@ app.post("/update-password", async (request, reply) => {
     } catch (error) {
         console.error(error);
         return reply.status(500).send({ error: "Erro ao redefinir senha." });
+    }
+});
+
+// Rota GET para registrar usuários
+app.get("/register", async (request, reply) => {
+    try {
+        const { data: register, error } = await supabase.from("register").select("*");
+        if (error) {
+            throw new Error(error.message);
+        }
+        return reply.send({ value: register });
+    } catch (error) {
+        console.error(error);
+        return reply.status(500).send({ error: "Erro ao buscar usuários" });
+    }
+});
+
+// Rota POST para registrar usuários
+app.post("/register", async (request, reply) => {
+    try {
+        const { name, registro, cpf, celular, email, password } = request.body as Register;
+
+        const { data: createdRegister, error } = await supabase.from("register").insert([{ 
+            name,
+            registro,
+            cpf,
+            celular, 
+            email, 
+            password 
+        }]).select();
+
+        if (error) {
+            return reply.status(400).send({ error: error.message });
+        }
+
+        return reply.status(201).send({ value: createdRegister ? createdRegister[0] : null });
+    } catch (error) {
+        console.error(error);
+        return reply.status(500).send({ error: "Erro ao registrar usuário" });
     }
 });
 
