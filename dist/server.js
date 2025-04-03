@@ -46,30 +46,27 @@ var app = (0, import_fastify.default)();
 app.get("/", async (request, reply) => {
   return reply.send({ message: "\u{1F680} API Fastify rodando com sucesso!" });
 });
-app.get("/users", async (request, reply) => {
+app.get("/register", async (request, reply) => {
   try {
-    const { data: users, error } = await supabase.from("users").select("*");
+    const { data: register, error } = await supabase.from("register").select("*");
     if (error) throw new Error(error.message);
-    return reply.send({ users });
+    return reply.send({ register });
   } catch (error) {
     console.error("Erro ao buscar usu\xE1rios:", error);
     return reply.status(500).send({ error: "Erro ao buscar usu\xE1rios." });
   }
 });
-app.post("/users", async (request, reply) => {
+app.post("/register", async (request, reply) => {
   try {
+    console.log("Dados recebidos:", request.body);
     const { name, email, password, registro, cpf, celular } = request.body;
     if (!name || !email || !password || !registro || !cpf || !celular) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
-    const { data: existingUser } = await supabase.from("users").select("id").eq("email", email).single();
-    if (existingUser) {
-      return reply.status(400).send({ error: "E-mail j\xE1 cadastrado." });
-    }
     const hashedPassword = await import_bcryptjs.default.hash(password, 10);
-    const { data: createdUser, error } = await supabase.from("users").insert([{ name, email, password: hashedPassword, registro, cpf, celular }]).select();
+    const { data: createdUser, error } = await supabase.from("register").insert([{ name, email, password: hashedPassword, registro, cpf, celular }]).select();
     if (error) return reply.status(400).send({ error: error.message });
-    return reply.status(201).send({ user: createdUser ? createdUser[0] : null });
+    return reply.status(201).send({ register: createdUser ? createdUser[0] : null });
   } catch (error) {
     console.error("Erro ao criar usu\xE1rio:", error);
     return reply.status(500).send({ error: "Erro ao criar usu\xE1rio." });
