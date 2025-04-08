@@ -13,6 +13,7 @@ type Users = {
     registro: string;
     cpf: string;
     celular: string;
+    status: string;
 };
 
 type Patients = {
@@ -46,9 +47,9 @@ app.get("/register", async (request, reply) => {
 // ✅ Rota POST - Criar usuário
 app.post("/register", async (request, reply) => {
     try {
-        const { name, email, password, registro, cpf, celular } = request.body as Users;
+        const { name, email, password, registro, cpf, celular, status } = request.body as Users;
 
-        if (!name || !email || !password || !registro || !cpf || !celular) {
+        if (!name || !email || !password || !registro || !cpf || !celular || !status) {
             return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
         }
 
@@ -56,7 +57,7 @@ app.post("/register", async (request, reply) => {
 
         const { data: createdUser, error } = await supabase
             .from("register")
-            .insert([{ name, email, password: hashedPassword, registro, cpf, celular }])
+            .insert([{ name, email, password: hashedPassword, registro, cpf, celular, status }])
             .select();
 
         if (error) return reply.status(400).send({ error: error.message });

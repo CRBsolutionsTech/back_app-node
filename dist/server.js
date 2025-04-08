@@ -60,12 +60,12 @@ app.get("/register", async (request, reply) => {
 });
 app.post("/register", async (request, reply) => {
   try {
-    const { name, email, password, registro, cpf, celular } = request.body;
-    if (!name || !email || !password || !registro || !cpf || !celular) {
+    const { name, email, password, registro, cpf, celular, status } = request.body;
+    if (!name || !email || !password || !registro || !cpf || !celular || !status) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
     const hashedPassword = await import_bcryptjs.default.hash(password, 10);
-    const { data: createdUser, error } = await supabase.from("register").insert([{ name, email, password: hashedPassword, registro, cpf, celular }]).select();
+    const { data: createdUser, error } = await supabase.from("register").insert([{ name, email, password: hashedPassword, registro, cpf, celular, status }]).select();
     if (error) return reply.status(400).send({ error: error.message });
     return reply.status(201).send({ register: createdUser ? createdUser[0] : null });
   } catch (error) {
