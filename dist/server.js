@@ -73,6 +73,36 @@ app.post("/register", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao criar usu\xE1rio." });
   }
 });
+app.put("/register/:cpf", async (request, reply) => {
+  try {
+    const { cpf } = request.params;
+    const { name, email, password, registro, celular, status } = request.body;
+    if (!cpf) {
+      return reply.status(400).send({ error: "CPF \xE9 obrigat\xF3rio." });
+    }
+    let hashedPassword;
+    if (password) {
+      hashedPassword = await import_bcryptjs.default.hash(password, 10);
+    }
+    const updateData = {
+      ...name && { name },
+      ...email && { email },
+      ...hashedPassword && { password: hashedPassword },
+      ...registro && { registro },
+      ...celular && { celular },
+      ...status && { status }
+    };
+    const { data: updatedUser, error } = await supabase.from("register").update(updateData).eq("cpf", cpf).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    if (!updatedUser || updatedUser.length === 0) {
+      return reply.status(404).send({ error: "Usu\xE1rio n\xE3o encontrado." });
+    }
+    return reply.send({ message: "Usu\xE1rio atualizado com sucesso!", user: updatedUser[0] });
+  } catch (error) {
+    console.error("Erro ao atualizar usu\xE1rio:", error);
+    return reply.status(500).send({ error: "Erro ao atualizar usu\xE1rio." });
+  }
+});
 app.post("/login", async (request, reply) => {
   try {
     const { cpf, password } = request.body;

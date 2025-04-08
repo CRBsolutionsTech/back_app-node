@@ -69,6 +69,51 @@ app.post("/register", async (request, reply) => {
     }
 });
 
+// ✅ Rota PUT - Atualizar usuário pelo CPF
+app.put("/register/:cpf", async (request, reply) => {
+    try {
+        const { cpf } = request.params as { cpf: string };
+        const { name, email, password, registro, celular, status } = request.body as Partial<Users>;
+
+        if (!cpf) {
+            return reply.status(400).send({ error: "CPF é obrigatório." });
+        }
+
+        // 🔐 Se for atualizar a senha, criptografa
+        let hashedPassword;
+        if (password) {
+            hashedPassword = await bcrypt.hash(password, 10);
+        }
+
+        const updateData: any = {
+            ...(name && { name }),
+            ...(email && { email }),
+            ...(hashedPassword && { password: hashedPassword }),
+            ...(registro && { registro }),
+            ...(celular && { celular }),
+            ...(status && { status }),
+        };
+
+        const { data: updatedUser, error } = await supabase
+            .from("register")
+            .update(updateData)
+            .eq("cpf", cpf)
+            .select();
+
+        if (error) return reply.status(400).send({ error: error.message });
+
+        if (!updatedUser || updatedUser.length === 0) {
+            return reply.status(404).send({ error: "Usuário não encontrado." });
+        }
+
+        return reply.send({ message: "Usuário atualizado com sucesso!", user: updatedUser[0] });
+    } catch (error) {
+        console.error("Erro ao atualizar usuário:", error);
+        return reply.status(500).send({ error: "Erro ao atualizar usuário." });
+    }
+});
+
+
 // ✅ Rota POST - Login usando CPF
 app.post("/login", async (request, reply) => {
     try {
