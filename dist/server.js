@@ -117,6 +117,45 @@ app.post("/reset-password", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao redefinir senha." });
   }
 });
+app.get("/patients", async (request, reply) => {
+  try {
+    const { data: patients, error } = await supabase.from("patients").select("*");
+    if (error) throw new Error(error.message);
+    return reply.send({ patients });
+  } catch (error) {
+    console.error("Erro ao buscar paciente:", error);
+    return reply.status(500).send({ error: "Erro ao buscar paciente." });
+  }
+});
+app.post("/patients", async (request, reply) => {
+  try {
+    const { name, location, phone, region, specialty, date, time } = request.body;
+    if (!name || !location || !phone || !region || !specialty || !date || !time) {
+      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
+    }
+    const { data: createdPatient, error } = await supabase.from("patients").insert([{ name, location, phone, region, specialty, date, time }]).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.status(201).send({ patients: createdPatient ? createdPatient[0] : null });
+  } catch (error) {
+    console.error("Erro ao criar paciente:", error);
+    return reply.status(500).send({ error: "Erro ao criar paciente." });
+  }
+});
+app.put("/patients/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const { name, location, phone, region, specialty, date, time } = request.body;
+    if (!name || !location || !phone || !region || !specialty || !date || !time) {
+      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios para atualiza\xE7\xE3o." });
+    }
+    const { data: updatedPatient, error } = await supabase.from("patients").update({ name, location, phone, region, specialty, date, time }).eq("id", id).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.send({ patients: updatedPatient ? updatedPatient[0] : null });
+  } catch (error) {
+    console.error("Erro ao atualizar paciente:", error);
+    return reply.status(500).send({ error: "Erro ao atualizar paciente." });
+  }
+});
 app.listen({
   host: "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 3333

@@ -15,6 +15,16 @@ type Users = {
     celular: string;
 };
 
+type Patients = {
+    name: string;
+    location: string;
+    phone: string;
+    region: string;
+    specialty: string;
+    date: string;
+    time: string;
+}
+
 // ✅ Rota principal (Home)
 app.get("/", async (request, reply) => {
     return reply.send({ message: "🚀 API Fastify rodando com sucesso!" });
@@ -129,6 +139,68 @@ app.post("/reset-password", async (request, reply) => {
         return reply.status(500).send({ error: "Erro ao redefinir senha." });
     }
 });
+
+// ✅ Rota GET - Buscar paciente
+app.get("/patients", async (request, reply) => {
+    try {
+        const { data: patients, error } = await supabase.from("patients").select("*");
+        if (error) throw new Error(error.message);
+
+        return reply.send({ patients });
+    } catch (error) {
+        console.error("Erro ao buscar paciente:", error);
+        return reply.status(500).send({ error: "Erro ao buscar paciente." });
+    }
+});
+
+// ✅ Rota POST - Criar paciente
+app.post("/patients", async (request, reply) => {
+    try {
+        const { name, location, phone, region, specialty, date, time } = request.body as Patients;
+
+        if (!name || !location || !phone || !region || !specialty || !date || !time) {
+            return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
+        }
+
+        const { data: createdPatient, error } = await supabase
+            .from("patients")
+            .insert([{ name, location, phone, region, specialty, date, time }])
+            .select();
+
+        if (error) return reply.status(400).send({ error: error.message });
+
+        return reply.status(201).send({ patients: createdPatient ? createdPatient[0] : null });
+    } catch (error) {
+        console.error("Erro ao criar paciente:", error);
+        return reply.status(500).send({ error: "Erro ao criar paciente." });
+    }
+});
+
+// ✅ Rota PUT - Atualizar paciente
+app.put("/patients/:id", async (request, reply) => {
+    try {
+        const { id } = request.params as { id: string };
+        const { name, location, phone, region, specialty, date, time } = request.body as Partial<Patients>;
+
+        if (!name || !location || !phone || !region || !specialty || !date || !time) {
+            return reply.status(400).send({ error: "Todos os campos são obrigatórios para atualização." });
+        }
+
+        const { data: updatedPatient, error } = await supabase
+            .from("patients")
+            .update({ name, location, phone, region, specialty, date, time })
+            .eq("id", id)
+            .select();
+
+        if (error) return reply.status(400).send({ error: error.message });
+
+        return reply.send({ patients: updatedPatient ? updatedPatient[0] : null });
+    } catch (error) {
+        console.error("Erro ao atualizar paciente:", error);
+        return reply.status(500).send({ error: "Erro ao atualizar paciente." });
+    }
+});
+
 
 // ✅ Iniciar servidor
 app.listen({
