@@ -32,12 +32,12 @@ app.get("/", async (request, reply) => {
 });
 
 // ✅ Rota GET - Buscar usuários
-app.get("/register", async (request, reply) => {
+app.get("/users", async (request, reply) => {
     try {
-        const { data: register, error } = await supabase.from("register").select("*");
+        const { data: users, error } = await supabase.from("users").select("*");
         if (error) throw new Error(error.message);
 
-        return reply.send({ register });
+        return reply.send({ users });
     } catch (error) {
         console.error("Erro ao buscar usuários:", error);
         return reply.status(500).send({ error: "Erro ao buscar usuários." });
@@ -45,7 +45,7 @@ app.get("/register", async (request, reply) => {
 });
 
 // ✅ Rota POST - Criar usuário
-app.post("/register", async (request, reply) => {
+app.post("/users", async (request, reply) => {
     try {
         const { name, email, password, registro, cpf, celular, status } = request.body as Users;
 
@@ -56,13 +56,13 @@ app.post("/register", async (request, reply) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const { data: createdUser, error } = await supabase
-            .from("register")
+            .from("users")
             .insert([{ name, email, password: hashedPassword, registro, cpf, celular, status }])
             .select();
 
         if (error) return reply.status(400).send({ error: error.message });
 
-        return reply.status(201).send({ register: createdUser ? createdUser[0] : null });
+        return reply.status(201).send({ users: createdUser ? createdUser[0] : null });
     } catch (error) {
         console.error("Erro ao criar usuário:", error);
         return reply.status(500).send({ error: "Erro ao criar usuário." });
@@ -70,7 +70,7 @@ app.post("/register", async (request, reply) => {
 });
 
 // ✅ Rota PUT - Atualizar usuário pelo CPF
-app.put("/register/:cpf", async (request, reply) => {
+app.put("/users/:cpf", async (request, reply) => {
     try {
         const { cpf } = request.params as { cpf: string };
         const { name, email, password, registro, celular, status } = request.body as Partial<Users>;
@@ -95,7 +95,7 @@ app.put("/register/:cpf", async (request, reply) => {
         };
 
         const { data: updatedUser, error } = await supabase
-            .from("register")
+            .from("users")
             .update(updateData)
             .eq("cpf", cpf)
             .select();
@@ -124,7 +124,7 @@ app.post("/login", async (request, reply) => {
         }
 
         const { data: user, error: userError } = await supabase
-            .from("register")
+            .from("users")
             .select("cpf, password, name, email")
             .eq("cpf", cpf)
             .single();
@@ -161,7 +161,7 @@ app.post("/reset-password", async (request, reply) => {
         }
 
         const { data: user, error: userError } = await supabase
-            .from("register")
+            .from("users")
             .select("email")
             .eq("email", email)
             .single();
@@ -173,7 +173,7 @@ app.post("/reset-password", async (request, reply) => {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         const { error } = await supabase
-            .from("register")
+            .from("users")
             .update({ password: hashedPassword })
             .eq("email", email);
 
