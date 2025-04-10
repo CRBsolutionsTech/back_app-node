@@ -61,7 +61,7 @@ app.post("/users", async (request, reply) => {
   try {
     const { name, email, password, registro, cpf, celular, status } = request.body as Users;
 
-    if (!name || !email || !password || !registro || !cpf || !celular || !status) {
+    if (!name || !email || !password || !registro || !cpf || !celular ) {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
     }
 

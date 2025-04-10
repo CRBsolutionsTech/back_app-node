@@ -72,7 +72,7 @@ app.get("/users", async (request, reply) => {
 app.post("/users", async (request, reply) => {
   try {
     const { name, email, password, registro, cpf, celular, status } = request.body;
-    if (!name || !email || !password || !registro || !cpf || !celular || !status) {
+    if (!name || !email || !password || !registro || !cpf || !celular) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
     const hashedPassword = await import_bcryptjs.default.hash(password, 10);
