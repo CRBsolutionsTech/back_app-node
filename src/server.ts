@@ -158,6 +158,13 @@ app.post("/login", async (request, reply) => {
   }
 });
 
+// ✅ POST - Logout (opcional)
+app.post("/logout", async (request, reply) => {
+    // Não há nada pra destruir no backend, já que o JWT é stateless
+    // Mas você pode apenas responder que o logout foi "bem-sucedido"
+    return reply.send({ message: "Logout realizado com sucesso!" });
+  });
+
 // ✅ POST - Resetar senha
 app.post("/reset-password", async (request, reply) => {
   try {

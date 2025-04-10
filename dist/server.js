@@ -137,6 +137,9 @@ app.post("/login", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao fazer login." });
   }
 });
+app.post("/logout", async (request, reply) => {
+  return reply.send({ message: "Logout realizado com sucesso!" });
+});
 app.post("/reset-password", async (request, reply) => {
   try {
     const { email, newPassword } = request.body;
