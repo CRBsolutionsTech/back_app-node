@@ -24,6 +24,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // src/server.ts
 var import_fastify = __toESM(require("fastify"));
+var import_cors = __toESM(require("@fastify/cors"));
 
 // src/supabaseConnection.ts
 var import_supabase_js = require("@supabase/supabase-js");
@@ -45,6 +46,16 @@ var import_bcryptjs = __toESM(require("bcryptjs"));
 var import_jsonwebtoken = __toESM(require("jsonwebtoken"));
 var app = (0, import_fastify.default)();
 var SECRET_KEY = "seu_segredo_super_seguro";
+app.register(import_cors.default, (instance) => {
+  return (req, callback) => {
+    const corsOptions = {
+      origin: true,
+      // permite qualquer origem (ideal pra dev)
+      credentials: true
+    };
+    callback(null, corsOptions);
+  };
+});
 app.get("/", async (request, reply) => {
   return reply.send({ message: "\u{1F680} API Fastify rodando com sucesso!" });
 });
@@ -77,9 +88,7 @@ app.put("/users/:cpf", async (request, reply) => {
   try {
     const { cpf } = request.params;
     const { name, email, password, registro, celular, status } = request.body;
-    if (!cpf) {
-      return reply.status(400).send({ error: "CPF \xE9 obrigat\xF3rio." });
-    }
+    if (!cpf) return reply.status(400).send({ error: "CPF \xE9 obrigat\xF3rio." });
     let hashedPassword;
     if (password) {
       hashedPassword = await import_bcryptjs.default.hash(password, 10);
