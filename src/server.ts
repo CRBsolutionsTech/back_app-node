@@ -1,22 +1,22 @@
 import fastify from "fastify";
-import cors from "@fastify/cors"; // 🔁 Importando o plugin de CORS
+import cors from "@fastify/cors";
 import { supabase } from "./supabaseConnection";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const app = fastify();
-const SECRET_KEY = "seu_segredo_super_seguro"; // 🔑 Defina uma chave segura
+const SECRET_KEY = "seu_segredo_super_seguro";
 
-// 🔐 Habilitando CORS
+// CORS
 app.register(cors, (instance) => {
-    return (req, callback) => {
-      const corsOptions = {
-        origin: true, // permite qualquer origem (ideal pra dev)
-        credentials: true
-      };
-      callback(null, corsOptions);
+  return (req, callback) => {
+    const corsOptions = {
+      origin: true,
+      credentials: true
     };
-  });
+    callback(null, corsOptions);
+  };
+});
 
 type Users = {
   name: string;
@@ -25,7 +25,7 @@ type Users = {
   registro: string;
   cpf: string;
   celular: string;
-  status: string;
+  status?: string;
 };
 
 type Patients = {
@@ -38,12 +38,12 @@ type Patients = {
   time: string;
 };
 
-// ✅ Rota principal
+// Rota principal
 app.get("/", async (request, reply) => {
   return reply.send({ message: "🚀 API Fastify rodando com sucesso!" });
 });
 
-// ✅ GET - Usuários
+// GET - Usuários
 app.get("/users", async (request, reply) => {
   try {
     const { data: users, error } = await supabase.from("users").select("*");
@@ -56,16 +56,17 @@ app.get("/users", async (request, reply) => {
   }
 });
 
-// ✅ POST - Criar usuário
+// POST - Criar usuário
 app.post("/users", async (request, reply) => {
   try {
-    const { name, email, password, registro, cpf, celular, status } = request.body as Users;
+    const { name, email, password, registro, cpf, celular } = request.body as Users;
 
-    if (!name || !email || !password || !registro || !cpf || !celular ) {
+    if (!name || !email || !password || !registro || !cpf || !celular) {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const status = "1"; // valor padrão
 
     const { data: createdUser, error } = await supabase
       .from("users")
@@ -81,7 +82,7 @@ app.post("/users", async (request, reply) => {
   }
 });
 
-// ✅ PUT - Atualizar usuário
+// PUT - Atualizar usuário
 app.put("/users/:cpf", async (request, reply) => {
   try {
     const { cpf } = request.params as { cpf: string };
@@ -100,7 +101,7 @@ app.put("/users/:cpf", async (request, reply) => {
       ...(hashedPassword && { password: hashedPassword }),
       ...(registro && { registro }),
       ...(celular && { celular }),
-      ...(status && { status }),
+      ...(status && { status })
     };
 
     const { data: updatedUser, error } = await supabase
@@ -121,7 +122,7 @@ app.put("/users/:cpf", async (request, reply) => {
   }
 });
 
-// ✅ POST - Login
+// POST - Login
 app.post("/login", async (request, reply) => {
   try {
     const { cpf, password } = request.body as { cpf: string; password: string };
@@ -158,14 +159,12 @@ app.post("/login", async (request, reply) => {
   }
 });
 
-// ✅ POST - Logout (opcional)
+// POST - Logout
 app.post("/logout", async (request, reply) => {
-    // Não há nada pra destruir no backend, já que o JWT é stateless
-    // Mas você pode apenas responder que o logout foi "bem-sucedido"
-    return reply.send({ message: "Logout realizado com sucesso!" });
-  });
+  return reply.send({ message: "Logout realizado com sucesso!" });
+});
 
-// ✅ POST - Resetar senha
+// POST - Resetar senha
 app.post("/reset-password", async (request, reply) => {
   try {
     const { email, newPassword } = request.body as { email: string; newPassword: string };
@@ -200,7 +199,7 @@ app.post("/reset-password", async (request, reply) => {
   }
 });
 
-// ✅ GET - Buscar pacientes
+// GET - Buscar pacientes
 app.get("/patients", async (request, reply) => {
   try {
     const { data: patients, error } = await supabase.from("patients").select("*");
@@ -213,7 +212,7 @@ app.get("/patients", async (request, reply) => {
   }
 });
 
-// ✅ POST - Criar paciente
+// POST - Criar paciente
 app.post("/patients", async (request, reply) => {
   try {
     const { name, location, phone, region, specialty, date, time } = request.body as Patients;
@@ -236,7 +235,7 @@ app.post("/patients", async (request, reply) => {
   }
 });
 
-// ✅ PUT - Atualizar paciente
+// PUT - Atualizar paciente
 app.put("/patients/:id", async (request, reply) => {
   try {
     const { id } = request.params as { id: string };
@@ -261,13 +260,16 @@ app.put("/patients/:id", async (request, reply) => {
   }
 });
 
-// ✅ Start do servidor
-app.listen({
-  host: "0.0.0.0",
-  port: process.env.PORT ? Number(process.env.PORT) : 3333,
-}).then(() => {
-  console.log("✅ Servidor Funcionando!");
-}).catch(err => {
-  console.error("❌ Erro ao iniciar servidor:", err);
-  process.exit(1);
-});
+// Start do servidor
+app
+  .listen({
+    host: "0.0.0.0",
+    port: process.env.PORT ? Number(process.env.PORT) : 3333
+  })
+  .then(() => {
+    console.log("✅ Servidor Funcionando!");
+  })
+  .catch((err) => {
+    console.error("❌ Erro ao iniciar servidor:", err);
+    process.exit(1);
+  });

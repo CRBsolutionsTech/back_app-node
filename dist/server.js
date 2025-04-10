@@ -50,7 +50,6 @@ app.register(import_cors.default, (instance) => {
   return (req, callback) => {
     const corsOptions = {
       origin: true,
-      // permite qualquer origem (ideal pra dev)
       credentials: true
     };
     callback(null, corsOptions);
@@ -71,11 +70,12 @@ app.get("/users", async (request, reply) => {
 });
 app.post("/users", async (request, reply) => {
   try {
-    const { name, email, password, registro, cpf, celular, status } = request.body;
+    const { name, email, password, registro, cpf, celular } = request.body;
     if (!name || !email || !password || !registro || !cpf || !celular) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
     const hashedPassword = await import_bcryptjs.default.hash(password, 10);
+    const status = "1";
     const { data: createdUser, error } = await supabase.from("users").insert([{ name, email, password: hashedPassword, registro, cpf, celular, status }]).select();
     if (error) return reply.status(400).send({ error: error.message });
     return reply.status(201).send({ users: createdUser ? createdUser[0] : null });
