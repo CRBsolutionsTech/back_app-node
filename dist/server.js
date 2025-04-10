@@ -118,7 +118,7 @@ app.post("/login", async (request, reply) => {
     if (!cpf || !password) {
       return reply.status(400).send({ error: "CPF e senha s\xE3o obrigat\xF3rios." });
     }
-    const { data: user, error: userError } = await supabase.from("users").select("cpf, password, name, email").eq("cpf", cpf).single();
+    const { data: user, error: userError } = await supabase.from("users").select("cpf, password, name, email, status").eq("cpf", cpf).single();
     if (userError || !user) {
       return reply.status(404).send({ error: "CPF n\xE3o encontrado." });
     }
@@ -127,11 +127,11 @@ app.post("/login", async (request, reply) => {
       return reply.status(401).send({ error: "Senha incorreta." });
     }
     const token = import_jsonwebtoken.default.sign(
-      { cpf: user.cpf, name: user.name, email: user.email },
+      { cpf: user.cpf, name: user.name, email: user.email, status: user.status },
       SECRET_KEY,
       { expiresIn: "1h" }
     );
-    return reply.send({ message: "Login bem-sucedido!", token });
+    return reply.send({ message: "Login bem-sucedido!", token, user });
   } catch (error) {
     console.error("Erro no login:", error);
     return reply.status(500).send({ error: "Erro ao fazer login." });

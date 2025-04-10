@@ -122,7 +122,6 @@ app.put("/users/:cpf", async (request, reply) => {
   }
 });
 
-// POST - Login
 app.post("/login", async (request, reply) => {
   try {
     const { cpf, password } = request.body as { cpf: string; password: string };
@@ -133,7 +132,7 @@ app.post("/login", async (request, reply) => {
 
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("cpf, password, name, email")
+      .select("cpf, password, name, email, status")
       .eq("cpf", cpf)
       .single();
 
@@ -147,12 +146,12 @@ app.post("/login", async (request, reply) => {
     }
 
     const token = jwt.sign(
-      { cpf: user.cpf, name: user.name, email: user.email },
+      { cpf: user.cpf, name: user.name, email: user.email, status: user.status },
       SECRET_KEY,
       { expiresIn: "1h" }
     );
 
-    return reply.send({ message: "Login bem-sucedido!", token });
+    return reply.send({ message: "Login bem-sucedido!", token, user });
   } catch (error) {
     console.error("Erro no login:", error);
     return reply.status(500).send({ error: "Erro ao fazer login." });
