@@ -259,6 +259,37 @@ app.put("/patients/:id", async (request, reply) => {
   }
 });
 
+// DELETE - Excluir paciente
+app.delete("/patients/:id", async (request, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+
+    if (!id) {
+      return reply.status(400).send({ error: "ID do paciente é obrigatório." });
+    }
+
+    const { data: deletedPatient, error } = await supabase
+      .from("patients")
+      .delete()
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    if (!deletedPatient || deletedPatient.length === 0) {
+      return reply.status(404).send({ error: "Paciente não encontrado." });
+    }
+
+    return reply.send({ message: "Paciente excluído com sucesso!", patient: deletedPatient[0] });
+  } catch (error) {
+    console.error("Erro ao excluir paciente:", error);
+    return reply.status(500).send({ error: "Erro ao excluir paciente." });
+  }
+});
+
+
 // Start do servidor
 app
   .listen({

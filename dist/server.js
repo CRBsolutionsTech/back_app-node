@@ -198,6 +198,25 @@ app.put("/patients/:id", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao atualizar paciente." });
   }
 });
+app.delete("/patients/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    if (!id) {
+      return reply.status(400).send({ error: "ID do paciente \xE9 obrigat\xF3rio." });
+    }
+    const { data: deletedPatient, error } = await supabase.from("patients").delete().eq("id", id).select();
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
+    if (!deletedPatient || deletedPatient.length === 0) {
+      return reply.status(404).send({ error: "Paciente n\xE3o encontrado." });
+    }
+    return reply.send({ message: "Paciente exclu\xEDdo com sucesso!", patient: deletedPatient[0] });
+  } catch (error) {
+    console.error("Erro ao excluir paciente:", error);
+    return reply.status(500).send({ error: "Erro ao excluir paciente." });
+  }
+});
 app.listen({
   host: "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 3333
