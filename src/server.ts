@@ -4,38 +4,28 @@ import { supabase } from "./supabaseConnection";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const app = fastify();
-const SECRET_KEY = "seu_segredo_super_seguro";
-
-// CORS
-app.register(cors, (instance) => {
-  return (req, callback) => {
-    const corsOptions = {
-      origin: true,
-      credentials: true
-    };
-    callback(null, corsOptions);
-  };
+const app = fastify({
+  logger: true
 });
 
-type Users = {
-  name: string;
-  email: string;
-  password: string;
-  registro: string;
-  cpf: string;
-  celular: string;
-  status?: string;
+const SECRET_KEY = "seu_segredo_super_seguro";
+
+// Registre o CORS
+app.register(cors, {
+  origin: '*',  // Permite todas as origens, ou defina o domínio específico
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+});
+
+// Função para hash de senha
+const hashPassword = async (password: string) => {
+  return await bcrypt.hash(password, 10);
 };
 
-type Patients = {
-  name: string;
-  location: string;
-  phone: string;
-  region: string;
-  specialty: string;
-  date: string;
-  time: string;
+// Função para comparar senha
+const comparePassword = async (password: string, hashedPassword: string) => {
+  return await bcrypt.compare(password, hashedPassword);
 };
 
 // Rota principal
@@ -65,7 +55,7 @@ app.post("/users", async (request, reply) => {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hashPassword(password);
     const status = "1"; // valor padrão
 
     const { data: createdUser, error } = await supabase
@@ -92,7 +82,7 @@ app.put("/users/:cpf", async (request, reply) => {
 
     let hashedPassword;
     if (password) {
-      hashedPassword = await bcrypt.hash(password, 10);
+      hashedPassword = await hashPassword(password);
     }
 
     const updateData: any = {
@@ -122,6 +112,7 @@ app.put("/users/:cpf", async (request, reply) => {
   }
 });
 
+// POST - Login
 app.post("/login", async (request, reply) => {
   try {
     const { cpf, password } = request.body as { cpf: string; password: string };
@@ -140,7 +131,7 @@ app.post("/login", async (request, reply) => {
       return reply.status(404).send({ error: "CPF não encontrado." });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await comparePassword(password, user.password);
     if (!passwordMatch) {
       return reply.status(401).send({ error: "Senha incorreta." });
     }
@@ -156,11 +147,6 @@ app.post("/login", async (request, reply) => {
     console.error("Erro no login:", error);
     return reply.status(500).send({ error: "Erro ao fazer login." });
   }
-});
-
-// POST - Logout
-app.post("/logout", async (request, reply) => {
-  return reply.send({ message: "Logout realizado com sucesso!" });
 });
 
 // POST - Resetar senha
@@ -182,7 +168,7 @@ app.post("/reset-password", async (request, reply) => {
       return reply.status(404).send({ error: "Usuário não encontrado." });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await hashPassword(newPassword);
 
     const { error } = await supabase
       .from("users")
@@ -268,10 +254,15 @@ app.delete("/patients/:id", async (request, reply) => {
       return reply.status(400).send({ error: "ID do paciente é obrigatório." });
     }
 
+    const patientId = Number(id);  // Converte o id para número
+    if (isNaN(patientId)) {
+      return reply.status(400).send({ error: "ID inválido." });
+    }
+
     const { data: deletedPatient, error } = await supabase
       .from("patients")
       .delete()
-      .eq("id", Number(id)) // <-- conversão aqui!
+      .eq("id", patientId) // Usando id numérico
       .select();
 
     if (error) {

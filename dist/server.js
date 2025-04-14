@@ -44,17 +44,24 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 // src/server.ts
 var import_bcryptjs = __toESM(require("bcryptjs"));
 var import_jsonwebtoken = __toESM(require("jsonwebtoken"));
-var app = (0, import_fastify.default)();
-var SECRET_KEY = "seu_segredo_super_seguro";
-app.register(import_cors.default, (instance) => {
-  return (req, callback) => {
-    const corsOptions = {
-      origin: true,
-      credentials: true
-    };
-    callback(null, corsOptions);
-  };
+var app = (0, import_fastify.default)({
+  logger: true
 });
+var SECRET_KEY = "seu_segredo_super_seguro";
+app.register(import_cors.default, {
+  origin: "*",
+  // Permite todas as origens, ou defina o domínio específico
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  // Métodos permitidos
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+});
+var hashPassword = async (password) => {
+  return await import_bcryptjs.default.hash(password, 10);
+};
+var comparePassword = async (password, hashedPassword) => {
+  return await import_bcryptjs.default.compare(password, hashedPassword);
+};
 app.get("/", async (request, reply) => {
   return reply.send({ message: "\u{1F680} API Fastify rodando com sucesso!" });
 });
@@ -74,7 +81,7 @@ app.post("/users", async (request, reply) => {
     if (!name || !email || !password || !registro || !cpf || !celular) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(password, 10);
+    const hashedPassword = await hashPassword(password);
     const status = "1";
     const { data: createdUser, error } = await supabase.from("users").insert([{ name, email, password: hashedPassword, registro, cpf, celular, status }]).select();
     if (error) return reply.status(400).send({ error: error.message });
@@ -91,7 +98,7 @@ app.put("/users/:cpf", async (request, reply) => {
     if (!cpf) return reply.status(400).send({ error: "CPF \xE9 obrigat\xF3rio." });
     let hashedPassword;
     if (password) {
-      hashedPassword = await import_bcryptjs.default.hash(password, 10);
+      hashedPassword = await hashPassword(password);
     }
     const updateData = {
       ...name && { name },
@@ -122,7 +129,7 @@ app.post("/login", async (request, reply) => {
     if (userError || !user) {
       return reply.status(404).send({ error: "CPF n\xE3o encontrado." });
     }
-    const passwordMatch = await import_bcryptjs.default.compare(password, user.password);
+    const passwordMatch = await comparePassword(password, user.password);
     if (!passwordMatch) {
       return reply.status(401).send({ error: "Senha incorreta." });
     }
@@ -137,9 +144,6 @@ app.post("/login", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao fazer login." });
   }
 });
-app.post("/logout", async (request, reply) => {
-  return reply.send({ message: "Logout realizado com sucesso!" });
-});
 app.post("/reset-password", async (request, reply) => {
   try {
     const { email, newPassword } = request.body;
@@ -150,7 +154,7 @@ app.post("/reset-password", async (request, reply) => {
     if (userError || !user) {
       return reply.status(404).send({ error: "Usu\xE1rio n\xE3o encontrado." });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(newPassword, 10);
+    const hashedPassword = await hashPassword(newPassword);
     const { error } = await supabase.from("users").update({ password: hashedPassword }).eq("email", email);
     if (error) return reply.status(400).send({ error: error.message });
     return reply.send({ message: "Senha redefinida com sucesso!" });
@@ -204,7 +208,11 @@ app.delete("/patients/:id", async (request, reply) => {
     if (!id) {
       return reply.status(400).send({ error: "ID do paciente \xE9 obrigat\xF3rio." });
     }
-    const { data: deletedPatient, error } = await supabase.from("patients").delete().eq("id", Number(id)).select();
+    const patientId = Number(id);
+    if (isNaN(patientId)) {
+      return reply.status(400).send({ error: "ID inv\xE1lido." });
+    }
+    const { data: deletedPatient, error } = await supabase.from("patients").delete().eq("id", patientId).select();
     if (error) {
       return reply.status(400).send({ error: error.message });
     }
