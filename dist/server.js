@@ -204,7 +204,7 @@ app.delete("/patients/:id", async (request, reply) => {
     if (!id) {
       return reply.status(400).send({ error: "ID do paciente \xE9 obrigat\xF3rio." });
     }
-    const { data: deletedPatient, error } = await supabase.from("patients").delete().eq("id", id).select();
+    const { data: deletedPatient, error } = await supabase.from("patients").delete().eq("id", Number(id)).select();
     if (error) {
       return reply.status(400).send({ error: error.message });
     }

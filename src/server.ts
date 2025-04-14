@@ -271,7 +271,7 @@ app.delete("/patients/:id", async (request, reply) => {
     const { data: deletedPatient, error } = await supabase
       .from("patients")
       .delete()
-      .eq("id", id)
+      .eq("id", Number(id)) // <-- conversão aqui!
       .select();
 
     if (error) {
@@ -288,7 +288,6 @@ app.delete("/patients/:id", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao excluir paciente." });
   }
 });
-
 
 // Start do servidor
 app
