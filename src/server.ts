@@ -1,4 +1,5 @@
 import fastify from "fastify";
+import fastifyMultipart from '@fastify/multipart';
 import cors from "@fastify/cors";
 import { supabase } from "./supabaseConnection";
 import bcrypt from "bcryptjs";
@@ -16,6 +17,11 @@ app.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
+});
+
+// Registrar o plugin para permitir o upload de arquivos
+app.register(fastifyMultipart, {
+  addToBody: true, // Adiciona o arquivo no corpo da requisição
 });
 
 // Função para hash de senha
@@ -458,29 +464,49 @@ app.get("/job-applications", async (request, reply) => {
   }
 });
 
-
-// POST - Candidatar vaga de emprego
+// POST - Cadastrar candidatura com upload de currículo
 app.post("/job-applications", async (request, reply) => {
   try {
-    const { job_id, name, email, phone, resume_url } = request.body;
+    const mp = await request.file(); // Extrai o arquivo
+    const { job_id, name, email, phone } = request.body; // Extrai os dados do corpo
+    const resume = mp.file; // O arquivo do currículo
 
-    if (!job_id || !name || !email || !phone || !resume_url) {
-      return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
+    if (!job_id || !name || !email || !phone || !resume) {
+      return reply.status(400).send({ error: "Todos os campos obrigatórios devem ser preenchidos." });
     }
 
-    const { data: createdApplication, error } = await supabase
+    // Criação de nome único para o arquivo com timestamp
+    const fileName = `${Date.now()}_${resume.filename}`;
+    const { error: uploadError } = await supabase.storage
+      .from("curriculos")  // Bucket onde os arquivos serão armazenados
+      .upload(fileName, resume, {
+        contentType: resume.mimetype, // Tipo de conteúdo
+      });
+
+    if (uploadError) {
+      console.error("Erro ao fazer upload do currículo:", uploadError);
+      return reply.status(500).send({ error: "Erro ao fazer upload do currículo." });
+    }
+
+    // Recuperando a URL pública do arquivo carregado
+    const { data: urlData } = supabase.storage.from("curriculos").getPublicUrl(fileName);
+    const resume_url = urlData.publicUrl;
+
+    // Inserir a candidatura no banco de dados
+    const { data: application, error } = await supabase
       .from("job_applications")
       .insert([{ job_id, name, email, phone, resume_url }])
       .select();
 
     if (error) return reply.status(400).send({ error: error.message });
 
-    return reply.status(201).send({ application: createdApplication[0] });
+    return reply.status(201).send({ application: application[0] });
   } catch (error) {
-    console.error("Erro ao registrar candidatura:", error);
-    return reply.status(500).send({ error: "Erro ao registrar candidatura." });
+    console.error("Erro ao cadastrar candidatura:", error);
+    return reply.status(500).send({ error: "Erro ao cadastrar candidatura." });
   }
 });
+
 
 // Start do servidor
 app
