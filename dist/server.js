@@ -175,11 +175,15 @@ app.get("/patients", async (request, reply) => {
 });
 app.post("/patients", async (request, reply) => {
   try {
-    const { name, location, phone, region, specialty, date, time } = request.body;
-    if (!name || !location || !phone || !region || !specialty || !date || !time) {
+    const { name, cpf, location, phone, region, specialty, date, time } = request.body;
+    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
     }
-    const { data: createdPatient, error } = await supabase.from("patients").insert([{ name, location, phone, region, specialty, date, time }]).select();
+    const { data: existingPatient, error: checkError } = await supabase.from("patients").select("id").eq("cpf", cpf).single();
+    if (checkError === null && existingPatient) {
+      return reply.status(409).send({ error: "CPF j\xE1 cadastrado." });
+    }
+    const { data: createdPatient, error } = await supabase.from("patients").insert([{ name, cpf, location, phone, region, specialty, date, time }]).select();
     if (error) return reply.status(400).send({ error: error.message });
     return reply.status(201).send({ patients: createdPatient ? createdPatient[0] : null });
   } catch (error) {
@@ -190,11 +194,11 @@ app.post("/patients", async (request, reply) => {
 app.put("/patients/:id", async (request, reply) => {
   try {
     const { id } = request.params;
-    const { name, location, phone, region, specialty, date, time } = request.body;
-    if (!name || !location || !phone || !region || !specialty || !date || !time) {
+    const { name, cpf, location, phone, region, specialty, date, time } = request.body;
+    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
       return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios para atualiza\xE7\xE3o." });
     }
-    const { data: updatedPatient, error } = await supabase.from("patients").update({ name, location, phone, region, specialty, date, time }).eq("id", id).select();
+    const { data: updatedPatient, error } = await supabase.from("patients").update({ name, cpf, location, phone, region, specialty, date, time }).eq("id", id).select();
     if (error) return reply.status(400).send({ error: error.message });
     return reply.send({ patients: updatedPatient ? updatedPatient[0] : null });
   } catch (error) {

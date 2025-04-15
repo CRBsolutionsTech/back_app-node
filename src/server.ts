@@ -200,15 +200,26 @@ app.get("/patients", async (request, reply) => {
 // POST - Criar paciente
 app.post("/patients", async (request, reply) => {
   try {
-    const { name, location, phone, region, specialty, date, time } = request.body as Patients;
+    const { name, cpf, location, phone, region, specialty, date, time } = request.body as Patients;
 
-    if (!name || !location || !phone || !region || !specialty || !date || !time) {
+    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
+    }
+
+    // Verificar se CPF já existe
+    const { data: existingPatient, error: checkError } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("cpf", cpf)
+      .single();
+
+    if (checkError === null && existingPatient) {
+      return reply.status(409).send({ error: "CPF já cadastrado." });
     }
 
     const { data: createdPatient, error } = await supabase
       .from("patients")
-      .insert([{ name, location, phone, region, specialty, date, time }])
+      .insert([{ name, cpf, location, phone, region, specialty, date, time }])
       .select();
 
     if (error) return reply.status(400).send({ error: error.message });
@@ -224,15 +235,15 @@ app.post("/patients", async (request, reply) => {
 app.put("/patients/:id", async (request, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const { name, location, phone, region, specialty, date, time } = request.body as Partial<Patients>;
+    const { name, cpf, location, phone, region, specialty, date, time } = request.body as Partial<Patients>;
 
-    if (!name || !location || !phone || !region || !specialty || !date || !time) {
+    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
       return reply.status(400).send({ error: "Todos os campos são obrigatórios para atualização." });
     }
 
     const { data: updatedPatient, error } = await supabase
       .from("patients")
-      .update({ name, location, phone, region, specialty, date, time })
+      .update({ name, cpf, location, phone, region, specialty, date, time })
       .eq("id", id)
       .select();
 
@@ -254,7 +265,7 @@ app.delete("/patients/:id", async (request, reply) => {
       return reply.status(400).send({ error: "ID do paciente é obrigatório." });
     }
 
-    const patientId = Number(id);  // Converte o id para número
+    const patientId = Number(id);
     if (isNaN(patientId)) {
       return reply.status(400).send({ error: "ID inválido." });
     }
@@ -262,7 +273,7 @@ app.delete("/patients/:id", async (request, reply) => {
     const { data: deletedPatient, error } = await supabase
       .from("patients")
       .delete()
-      .eq("id", patientId) // Usando id numérico
+      .eq("id", patientId)
       .select();
 
     if (error) {
