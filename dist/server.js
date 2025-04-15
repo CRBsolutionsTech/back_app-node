@@ -25,6 +25,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // src/server.ts
 var import_fastify = __toESM(require("fastify"));
 var import_cors = __toESM(require("@fastify/cors"));
+var import_multipart = __toESM(require("@fastify/multipart"));
 
 // src/supabaseConnection.ts
 var import_supabase_js = require("@supabase/supabase-js");
@@ -47,6 +48,7 @@ var import_jsonwebtoken = __toESM(require("jsonwebtoken"));
 var app = (0, import_fastify.default)({
   logger: true
 });
+app.register(import_multipart.default);
 app.register(import_cors.default, {
   origin: "*",
   // Permite todas as origens, ou defina o domínio específico
@@ -163,6 +165,72 @@ app.post("/reset-password", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao redefinir senha." });
   }
 });
+app.get("/patients", async (request, reply) => {
+  try {
+    const { data: patients, error } = await supabase.from("patients").select("*");
+    if (error) throw new Error(error.message);
+    return reply.send({ patients });
+  } catch (error) {
+    console.error("Erro ao buscar paciente:", error);
+    return reply.status(500).send({ error: "Erro ao buscar paciente." });
+  }
+});
+app.post("/patients", async (request, reply) => {
+  try {
+    const { name, cpf, location, phone, region, specialty, date, time } = request.body;
+    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
+      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
+    }
+    const { data: existingPatient, error: checkError } = await supabase.from("patients").select("id").eq("cpf", cpf).single();
+    if (checkError === null && existingPatient) {
+      return reply.status(409).send({ error: "CPF j\xE1 cadastrado." });
+    }
+    const { data: createdPatient, error } = await supabase.from("patients").insert([{ name, cpf, location, phone, region, specialty, date, time }]).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.status(201).send({ patients: createdPatient ? createdPatient[0] : null });
+  } catch (error) {
+    console.error("Erro ao criar paciente:", error);
+    return reply.status(500).send({ error: "Erro ao criar paciente." });
+  }
+});
+app.put("/patients/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const { name, cpf, location, phone, region, specialty, date, time } = request.body;
+    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
+      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios para atualiza\xE7\xE3o." });
+    }
+    const { data: updatedPatient, error } = await supabase.from("patients").update({ name, cpf, location, phone, region, specialty, date, time }).eq("id", id).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.send({ patients: updatedPatient ? updatedPatient[0] : null });
+  } catch (error) {
+    console.error("Erro ao atualizar paciente:", error);
+    return reply.status(500).send({ error: "Erro ao atualizar paciente." });
+  }
+});
+app.delete("/patients/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    if (!id) {
+      return reply.status(400).send({ error: "ID do paciente \xE9 obrigat\xF3rio." });
+    }
+    const patientId = Number(id);
+    if (isNaN(patientId)) {
+      return reply.status(400).send({ error: "ID inv\xE1lido." });
+    }
+    const { data: deletedPatient, error } = await supabase.from("patients").delete().eq("id", patientId).select();
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
+    if (!deletedPatient || deletedPatient.length === 0) {
+      return reply.status(404).send({ error: "Paciente n\xE3o encontrado." });
+    }
+    return reply.send({ message: "Paciente exclu\xEDdo com sucesso!", patient: deletedPatient[0] });
+  } catch (error) {
+    console.error("Erro ao excluir paciente:", error);
+    return reply.status(500).send({ error: "Erro ao excluir paciente." });
+  }
+});
 app.get("/jobs", async (request, reply) => {
   try {
     const { data: jobs, error } = await supabase.from("jobs").select("*");
@@ -203,6 +271,67 @@ app.post("/jobs", async (request, reply) => {
   } catch (error) {
     console.error("Erro ao criar vaga:", error);
     return reply.status(500).send({ error: "Erro ao criar vaga." });
+  }
+});
+app.put("/jobs/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const {
+      cargo,
+      salario,
+      local,
+      descricao,
+      requisitos,
+      beneficios,
+      horario,
+      regime_contratacao
+    } = request.body;
+    if (!cargo || !salario || !local || !descricao || !requisitos || !beneficios || !horario || !regime_contratacao) {
+      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios para atualiza\xE7\xE3o." });
+    }
+    const { data: updatedJob, error } = await supabase.from("jobs").update({
+      cargo,
+      salario,
+      local,
+      descricao,
+      requisitos,
+      beneficios,
+      horario,
+      regime_contratacao
+    }).eq("id", id).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    return reply.send({ job: updatedJob ? updatedJob[0] : null });
+  } catch (error) {
+    console.error("Erro ao atualizar vaga:", error);
+    return reply.status(500).send({ error: "Erro ao atualizar vaga." });
+  }
+});
+app.delete("/jobs/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const numericId = Number(id);
+    if (isNaN(numericId)) {
+      return reply.status(400).send({ error: "ID inv\xE1lido." });
+    }
+    const { data: deletedJob, error } = await supabase.from("jobs").delete().eq("id", numericId).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    if (!deletedJob || deletedJob.length === 0) {
+      return reply.status(404).send({ error: "Vaga n\xE3o encontrada." });
+    }
+    return reply.send({ message: "Vaga exclu\xEDda com sucesso!", job: deletedJob[0] });
+  } catch (error) {
+    console.error("Erro ao excluir vaga:", error);
+    return reply.status(500).send({ error: "Erro ao excluir vaga." });
+  }
+});
+app.get("/job-applications", async (request, reply) => {
+  try {
+    const { data: applications, error } = await supabase.from("jobApplications").select("*");
+    if (error) throw new Error(error.message);
+    return reply.send({ applications });
+  } catch (error) {
+    console.error("Erro ao buscar candidaturas:", error);
+    return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
 app.post("/job-applications", async (request, reply) => {
