@@ -1,25 +1,21 @@
-import fastify from "fastify";
-import cors from "@fastify/cors";
-import fastifyMultipart from '@fastify/multipart'
-import { supabase } from "./supabaseConnection";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import fastify from 'fastify';
+import cors from '@fastify/cors';
+import { supabase } from './supabaseConnection';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const app = fastify({
-  logger: true
+  logger: true,
 });
 
-const SECRET_KEY = "seu_segredo_super_seguro";
-
-app.register(fastifyMultipart)
-
-// Registre o CORS
 app.register(cors, {
   origin: '*',  // Permite todas as origens, ou defina o domínio específico
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 });
+
+const SECRET_KEY = "seu_segredo_super_seguro";
 
 // Função para hash de senha
 const hashPassword = async (password: string) => {
@@ -187,113 +183,6 @@ app.post("/reset-password", async (request, reply) => {
   }
 });
 
-// GET - Buscar pacientes
-app.get("/patients", async (request, reply) => {
-  try {
-    const { data: patients, error } = await supabase.from("patients").select("*");
-    if (error) throw new Error(error.message);
-
-    return reply.send({ patients });
-  } catch (error) {
-    console.error("Erro ao buscar paciente:", error);
-    return reply.status(500).send({ error: "Erro ao buscar paciente." });
-  }
-});
-
-// POST - Criar paciente
-app.post("/patients", async (request, reply) => {
-  try {
-    const { name, cpf, location, phone, region, specialty, date, time } = request.body as Patients;
-
-    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
-      return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
-    }
-
-    // Verificar se CPF já existe
-    const { data: existingPatient, error: checkError } = await supabase
-      .from("patients")
-      .select("id")
-      .eq("cpf", cpf)
-      .single();
-
-    if (checkError === null && existingPatient) {
-      return reply.status(409).send({ error: "CPF já cadastrado." });
-    }
-
-    const { data: createdPatient, error } = await supabase
-      .from("patients")
-      .insert([{ name, cpf, location, phone, region, specialty, date, time }])
-      .select();
-
-    if (error) return reply.status(400).send({ error: error.message });
-
-    return reply.status(201).send({ patients: createdPatient ? createdPatient[0] : null });
-  } catch (error) {
-    console.error("Erro ao criar paciente:", error);
-    return reply.status(500).send({ error: "Erro ao criar paciente." });
-  }
-});
-
-// PUT - Atualizar paciente
-app.put("/patients/:id", async (request, reply) => {
-  try {
-    const { id } = request.params as { id: string };
-    const { name, cpf, location, phone, region, specialty, date, time } = request.body as Partial<Patients>;
-
-    if (!name || !cpf || !location || !phone || !region || !specialty || !date || !time) {
-      return reply.status(400).send({ error: "Todos os campos são obrigatórios para atualização." });
-    }
-
-    const { data: updatedPatient, error } = await supabase
-      .from("patients")
-      .update({ name, cpf, location, phone, region, specialty, date, time })
-      .eq("id", id)
-      .select();
-
-    if (error) return reply.status(400).send({ error: error.message });
-
-    return reply.send({ patients: updatedPatient ? updatedPatient[0] : null });
-  } catch (error) {
-    console.error("Erro ao atualizar paciente:", error);
-    return reply.status(500).send({ error: "Erro ao atualizar paciente." });
-  }
-});
-
-// DELETE - Excluir paciente
-app.delete("/patients/:id", async (request, reply) => {
-  try {
-    const { id } = request.params as { id: string };
-
-    if (!id) {
-      return reply.status(400).send({ error: "ID do paciente é obrigatório." });
-    }
-
-    const patientId = Number(id);
-    if (isNaN(patientId)) {
-      return reply.status(400).send({ error: "ID inválido." });
-    }
-
-    const { data: deletedPatient, error } = await supabase
-      .from("patients")
-      .delete()
-      .eq("id", patientId)
-      .select();
-
-    if (error) {
-      return reply.status(400).send({ error: error.message });
-    }
-
-    if (!deletedPatient || deletedPatient.length === 0) {
-      return reply.status(404).send({ error: "Paciente não encontrado." });
-    }
-
-    return reply.send({ message: "Paciente excluído com sucesso!", patient: deletedPatient[0] });
-  } catch (error) {
-    console.error("Erro ao excluir paciente:", error);
-    return reply.status(500).send({ error: "Erro ao excluir paciente." });
-  }
-});
-
 // GET - Vagas de emprego
 app.get("/jobs", async (request, reply) => {
   try {
@@ -307,7 +196,6 @@ app.get("/jobs", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar vagas." });
   }
 });
-
 
 // POST - Criar vaga de emprego
 app.post("/jobs", async (request, reply) => {
@@ -364,154 +252,35 @@ app.post("/jobs", async (request, reply) => {
   }
 });
 
-// PUT - Editar vaga de emprego
-app.put("/jobs/:id", async (request, reply) => {
+// POST - Criar candidaturas
+app.post('/job-applications', async (request, reply) => {
   try {
-    const { id } = request.params as { id: string };
-    const {
-      cargo,
-      salario,
-      local,
-      descricao,
-      requisitos,
-      beneficios,
-      horario,
-      regime_contratacao
-    } = request.body;
+    // Recebendo os dados do formulário
+    const { job_id, name, email, phone } = request.body;
 
-    // Validação
-    if (
-      !cargo ||
-      !salario ||
-      !local ||
-      !descricao ||
-      !requisitos ||
-      !beneficios ||
-      !horario ||
-      !regime_contratacao
-    ) {
-      return reply.status(400).send({ error: "Todos os campos são obrigatórios para atualização." });
+    // Verificando se todos os campos obrigatórios foram enviados
+    if (!job_id || !name || !email || !phone) {
+      return reply.status(400).send({ error: 'Todos os campos obrigatórios devem ser preenchidos.' });
     }
 
-    const { data: updatedJob, error } = await supabase
-      .from("jobs")
-      .update({
-        cargo,
-        salario,
-        local,
-        descricao,
-        requisitos,
-        beneficios,
-        horario,
-        regime_contratacao
-      })
-      .eq("id", id)
-      .select();
-
-    if (error) return reply.status(400).send({ error: error.message });
-
-    return reply.send({ job: updatedJob ? updatedJob[0] : null });
-  } catch (error) {
-    console.error("Erro ao atualizar vaga:", error);
-    return reply.status(500).send({ error: "Erro ao atualizar vaga." });
-  }
-});
-
-// DELETE - Deletar vaga de emprego
-app.delete("/jobs/:id", async (request, reply) => {
-  try {
-    const { id } = request.params as { id: string };
-
-    const numericId = Number(id);
-    if (isNaN(numericId)) {
-      return reply.status(400).send({ error: "ID inválido." });
-    }
-
-    const { data: deletedJob, error } = await supabase
-      .from("jobs")
-      .delete()
-      .eq("id", numericId)
-      .select();
-
-    if (error) return reply.status(400).send({ error: error.message });
-
-    if (!deletedJob || deletedJob.length === 0) {
-      return reply.status(404).send({ error: "Vaga não encontrada." });
-    }
-
-    return reply.send({ message: "Vaga excluída com sucesso!", job: deletedJob[0] });
-  } catch (error) {
-    console.error("Erro ao excluir vaga:", error);
-    return reply.status(500).send({ error: "Erro ao excluir vaga." });
-  }
-});
-
-// GET - Buscar candidaturas
-app.get("/job-applications", async (request, reply) => {
-  try {
-    const { data: applications, error } = await supabase
-      .from("jobApplications")
-      .select("*");
-
-    if (error) throw new Error(error.message);
-
-    return reply.send({ applications });
-  } catch (error) {
-    console.error("Erro ao buscar candidaturas:", error);
-    return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
-  }
-});
-
-app.post("/job-applications", async (request, reply) => {
-  try {
-    const parts = request.parts();
-    const formData: any = {};
-
-    for await (const part of parts) {
-      if (part.file) {
-        const fileName = `resumes/${Date.now()}-${part.filename}`; // nome único
-        const { data, error: uploadError } = await supabase.storage
-          .from("curriculos") // nome do seu bucket
-          .upload(fileName, part.file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (uploadError) {
-          console.error("Erro ao fazer upload:", uploadError.message);
-          return reply.status(500).send({ error: "Erro ao fazer upload do currículo." });
-        }
-
-        // Construir a URL pública corretamente
-        const PUBLIC_URL = `https://fsazoshvbyzxghxuohdd.supabase.co/storage/v1/object/public/curriculos/${fileName}`;
-        formData.resume_url = PUBLIC_URL;
-      } else {
-        formData[part.fieldname] = part.value;
-      }
-    }
-
-    const { job_id, name, email, phone, resume_url } = formData;
-
-    if (!job_id || !name || !email || !phone || !resume_url) {
-      return reply.status(400).send({ error: "Todos os campos obrigatórios devem ser preenchidos." });
-    }
-
+    // Inserindo os dados da candidatura no banco
     const { data: application, error } = await supabase
-      .from("jobApplications")
-      .insert([{ job_id, name, email, phone, resume_url }])
+      .from('jobApplications')
+      .insert([{ job_id, name, email, phone }])
       .select();
 
+    // Se houver erro ao inserir no banco
     if (error) {
-      return reply.status(400).send({ error: error.message });
+      return reply.status(500).send({ error: 'Erro ao cadastrar candidatura.' });
     }
 
+    // Respondendo com os dados da candidatura criada
     return reply.status(201).send({ application: application[0] });
   } catch (error) {
-    console.error("Erro ao cadastrar candidatura:", error);
-    return reply.status(500).send({ error: "Erro ao cadastrar candidatura." });
+    console.error('Erro ao processar a candidatura:', error);
+    return reply.status(500).send({ error: 'Erro ao processar a candidatura.' });
   }
 });
-
 
 // Start do servidor
 app
