@@ -24,7 +24,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // src/server.ts
 var import_fastify = __toESM(require("fastify"));
-var import_multipart = __toESM(require("@fastify/multipart"));
 var import_cors = __toESM(require("@fastify/cors"));
 
 // src/supabaseConnection.ts
@@ -56,10 +55,6 @@ app.register(import_cors.default, {
   // Métodos permitidos
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-});
-app.register(import_multipart.default, {
-  addToBody: true
-  // Adiciona o arquivo no corpo da requisição
 });
 var hashPassword = async (password) => {
   return await import_bcryptjs.default.hash(password, 10);
@@ -232,136 +227,6 @@ app.delete("/patients/:id", async (request, reply) => {
   } catch (error) {
     console.error("Erro ao excluir paciente:", error);
     return reply.status(500).send({ error: "Erro ao excluir paciente." });
-  }
-});
-app.get("/jobs", async (request, reply) => {
-  try {
-    const { data: jobs, error } = await supabase.from("jobs").select("*");
-    if (error) throw new Error(error.message);
-    return reply.send({ jobs });
-  } catch (error) {
-    console.error("Erro ao buscar vagas:", error);
-    return reply.status(500).send({ error: "Erro ao buscar vagas." });
-  }
-});
-app.post("/jobs", async (request, reply) => {
-  try {
-    const {
-      cargo,
-      salario,
-      local,
-      descricao,
-      requisitos,
-      beneficios,
-      horario,
-      regime_contratacao
-    } = request.body;
-    if (!cargo || !salario || !local || !descricao || !requisitos || !beneficios || !horario || !regime_contratacao) {
-      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios." });
-    }
-    const { data: createdJob, error } = await supabase.from("jobs").insert([{
-      cargo,
-      salario,
-      local,
-      descricao,
-      requisitos,
-      beneficios,
-      horario,
-      regime_contratacao
-    }]).select();
-    if (error) return reply.status(400).send({ error: error.message });
-    return reply.status(201).send({ job: createdJob ? createdJob[0] : null });
-  } catch (error) {
-    console.error("Erro ao criar vaga:", error);
-    return reply.status(500).send({ error: "Erro ao criar vaga." });
-  }
-});
-app.put("/jobs/:id", async (request, reply) => {
-  try {
-    const { id } = request.params;
-    const {
-      cargo,
-      salario,
-      local,
-      descricao,
-      requisitos,
-      beneficios,
-      horario,
-      regime_contratacao
-    } = request.body;
-    if (!cargo || !salario || !local || !descricao || !requisitos || !beneficios || !horario || !regime_contratacao) {
-      return reply.status(400).send({ error: "Todos os campos s\xE3o obrigat\xF3rios para atualiza\xE7\xE3o." });
-    }
-    const { data: updatedJob, error } = await supabase.from("jobs").update({
-      cargo,
-      salario,
-      local,
-      descricao,
-      requisitos,
-      beneficios,
-      horario,
-      regime_contratacao
-    }).eq("id", id).select();
-    if (error) return reply.status(400).send({ error: error.message });
-    return reply.send({ job: updatedJob ? updatedJob[0] : null });
-  } catch (error) {
-    console.error("Erro ao atualizar vaga:", error);
-    return reply.status(500).send({ error: "Erro ao atualizar vaga." });
-  }
-});
-app.delete("/jobs/:id", async (request, reply) => {
-  try {
-    const { id } = request.params;
-    const numericId = Number(id);
-    if (isNaN(numericId)) {
-      return reply.status(400).send({ error: "ID inv\xE1lido." });
-    }
-    const { data: deletedJob, error } = await supabase.from("jobs").delete().eq("id", numericId).select();
-    if (error) return reply.status(400).send({ error: error.message });
-    if (!deletedJob || deletedJob.length === 0) {
-      return reply.status(404).send({ error: "Vaga n\xE3o encontrada." });
-    }
-    return reply.send({ message: "Vaga exclu\xEDda com sucesso!", job: deletedJob[0] });
-  } catch (error) {
-    console.error("Erro ao excluir vaga:", error);
-    return reply.status(500).send({ error: "Erro ao excluir vaga." });
-  }
-});
-app.get("/job-applications", async (request, reply) => {
-  try {
-    const { data: applications, error } = await supabase.from("job_applications").select("*");
-    if (error) throw new Error(error.message);
-    return reply.send({ applications });
-  } catch (error) {
-    console.error("Erro ao buscar candidaturas:", error);
-    return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
-  }
-});
-app.post("/job-applications", async (request, reply) => {
-  try {
-    const mp = await request.file();
-    const { job_id, name, email, phone } = request.body;
-    const resume = mp.file;
-    if (!job_id || !name || !email || !phone || !resume) {
-      return reply.status(400).send({ error: "Todos os campos obrigat\xF3rios devem ser preenchidos." });
-    }
-    const fileName = `${Date.now()}_${resume.filename}`;
-    const { error: uploadError } = await supabase.storage.from("curriculos").upload(fileName, resume, {
-      contentType: resume.mimetype
-      // Tipo de conteúdo
-    });
-    if (uploadError) {
-      console.error("Erro ao fazer upload do curr\xEDculo:", uploadError);
-      return reply.status(500).send({ error: "Erro ao fazer upload do curr\xEDculo." });
-    }
-    const { data: urlData } = supabase.storage.from("curriculos").getPublicUrl(fileName);
-    const resume_url = urlData.publicUrl;
-    const { data: application, error } = await supabase.from("job_applications").insert([{ job_id, name, email, phone, resume_url }]).select();
-    if (error) return reply.status(400).send({ error: error.message });
-    return reply.status(201).send({ application: application[0] });
-  } catch (error) {
-    console.error("Erro ao cadastrar candidatura:", error);
-    return reply.status(500).send({ error: "Erro ao cadastrar candidatura." });
   }
 });
 app.listen({
