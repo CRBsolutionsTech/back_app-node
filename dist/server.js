@@ -25,6 +25,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // src/server.ts
 var import_fastify = __toESM(require("fastify"));
 var import_cors = __toESM(require("@fastify/cors"));
+var import_multipart = __toESM(require("@fastify/multipart"));
 
 // src/supabaseConnection.ts
 var import_supabase_js = require("@supabase/supabase-js");
@@ -48,6 +49,7 @@ var app = (0, import_fastify.default)({
   logger: true
 });
 var SECRET_KEY = "seu_segredo_super_seguro";
+app.register(import_multipart.default);
 app.register(import_cors.default, {
   origin: "*",
   // Permite todas as origens, ou defina o domínio específico
@@ -332,14 +334,35 @@ app.get("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
-app.post("/jobApplications", async (request, reply) => {
+app.post("/job-applications", async (request, reply) => {
   try {
-    const { job_id, name, email, phone, resume_url } = request.body;
-    if (!job_id || !name || !email || !phone) {
+    const parts = request.parts();
+    const formData = {};
+    for await (const part of parts) {
+      if (part.file) {
+        const fileName = `resumes/${Date.now()}-${part.filename}`;
+        const { data, error: uploadError } = await supabase.storage.from("curriculos").upload(fileName, part.file, {
+          cacheControl: "3600",
+          upsert: false
+        });
+        if (uploadError) {
+          console.error("Erro ao fazer upload:", uploadError.message);
+          return reply.status(500).send({ error: "Erro ao fazer upload do curr\xEDculo." });
+        }
+        const PUBLIC_URL = `https://fsazoshvbyzxghxuohdd.supabase.co/storage/v1/object/public/curriculos/${fileName}`;
+        formData.resume_url = PUBLIC_URL;
+      } else {
+        formData[part.fieldname] = part.value;
+      }
+    }
+    const { job_id, name, email, phone, resume_url } = formData;
+    if (!job_id || !name || !email || !phone || !resume_url) {
       return reply.status(400).send({ error: "Todos os campos obrigat\xF3rios devem ser preenchidos." });
     }
     const { data: application, error } = await supabase.from("jobApplications").insert([{ job_id, name, email, phone, resume_url }]).select();
-    if (error) return reply.status(400).send({ error: error.message });
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
     return reply.status(201).send({ application: application[0] });
   } catch (error) {
     console.error("Erro ao cadastrar candidatura:", error);

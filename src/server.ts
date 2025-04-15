@@ -1,5 +1,6 @@
 import fastify from "fastify";
 import cors from "@fastify/cors";
+import fastifyMultipart from '@fastify/multipart'
 import { supabase } from "./supabaseConnection";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -9,6 +10,8 @@ const app = fastify({
 });
 
 const SECRET_KEY = "seu_segredo_super_seguro";
+
+app.register(fastifyMultipart)
 
 // Registre o CORS
 app.register(cors, {
@@ -459,12 +462,37 @@ app.get("/job-applications", async (request, reply) => {
   }
 });
 
-// POST - Cadastrar candidatura em uma vaga
-app.post("/jobApplications", async (request, reply) => {
+app.post("/job-applications", async (request, reply) => {
   try {
-    const { job_id, name, email, phone, resume_url } = request.body;
+    const parts = request.parts();
+    const formData: any = {};
 
-    if (!job_id || !name || !email || !phone) {
+    for await (const part of parts) {
+      if (part.file) {
+        const fileName = `resumes/${Date.now()}-${part.filename}`; // nome único
+        const { data, error: uploadError } = await supabase.storage
+          .from("curriculos") // nome do seu bucket
+          .upload(fileName, part.file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error("Erro ao fazer upload:", uploadError.message);
+          return reply.status(500).send({ error: "Erro ao fazer upload do currículo." });
+        }
+
+        // Construir a URL pública corretamente
+        const PUBLIC_URL = `https://fsazoshvbyzxghxuohdd.supabase.co/storage/v1/object/public/curriculos/${fileName}`;
+        formData.resume_url = PUBLIC_URL;
+      } else {
+        formData[part.fieldname] = part.value;
+      }
+    }
+
+    const { job_id, name, email, phone, resume_url } = formData;
+
+    if (!job_id || !name || !email || !phone || !resume_url) {
       return reply.status(400).send({ error: "Todos os campos obrigatórios devem ser preenchidos." });
     }
 
@@ -473,7 +501,9 @@ app.post("/jobApplications", async (request, reply) => {
       .insert([{ job_id, name, email, phone, resume_url }])
       .select();
 
-    if (error) return reply.status(400).send({ error: error.message });
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
 
     return reply.status(201).send({ application: application[0] });
   } catch (error) {
@@ -481,6 +511,7 @@ app.post("/jobApplications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao cadastrar candidatura." });
   }
 });
+
 
 // Start do servidor
 app
