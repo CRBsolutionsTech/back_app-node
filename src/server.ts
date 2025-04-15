@@ -447,7 +447,7 @@ app.delete("/jobs/:id", async (request, reply) => {
 app.get("/job-applications", async (request, reply) => {
   try {
     const { data: applications, error } = await supabase
-      .from("job_applications")
+      .from("jobApplications")
       .select("*");
 
     if (error) throw new Error(error.message);
@@ -460,7 +460,7 @@ app.get("/job-applications", async (request, reply) => {
 });
 
 // POST - Cadastrar candidatura em uma vaga
-app.post("/job-applications", async (request, reply) => {
+app.post("/jobApplications", async (request, reply) => {
   try {
     const { job_id, name, email, phone, resume_url } = request.body;
 
@@ -469,7 +469,7 @@ app.post("/job-applications", async (request, reply) => {
     }
 
     const { data: application, error } = await supabase
-      .from("job_applications")
+      .from("jobApplications")
       .insert([{ job_id, name, email, phone, resume_url }])
       .select();
 
@@ -481,8 +481,6 @@ app.post("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao cadastrar candidatura." });
   }
 });
-
-
 
 // Start do servidor
 app

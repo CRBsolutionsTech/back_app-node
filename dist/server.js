@@ -324,7 +324,7 @@ app.delete("/jobs/:id", async (request, reply) => {
 });
 app.get("/job-applications", async (request, reply) => {
   try {
-    const { data: applications, error } = await supabase.from("job_applications").select("*");
+    const { data: applications, error } = await supabase.from("jobApplications").select("*");
     if (error) throw new Error(error.message);
     return reply.send({ applications });
   } catch (error) {
@@ -332,13 +332,13 @@ app.get("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
-app.post("/job-applications", async (request, reply) => {
+app.post("/jobApplications", async (request, reply) => {
   try {
     const { job_id, name, email, phone, resume_url } = request.body;
     if (!job_id || !name || !email || !phone) {
       return reply.status(400).send({ error: "Todos os campos obrigat\xF3rios devem ser preenchidos." });
     }
-    const { data: application, error } = await supabase.from("job_applications").insert([{ job_id, name, email, phone, resume_url }]).select();
+    const { data: application, error } = await supabase.from("jobApplications").insert([{ job_id, name, email, phone, resume_url }]).select();
     if (error) return reply.status(400).send({ error: error.message });
     return reply.status(201).send({ application: application[0] });
   } catch (error) {
