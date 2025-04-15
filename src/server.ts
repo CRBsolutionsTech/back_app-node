@@ -291,6 +291,199 @@ app.delete("/patients/:id", async (request, reply) => {
   }
 });
 
+// GET - Vagas de emprego
+app.get("/jobs", async (request, reply) => {
+  try {
+    const { data: jobs, error } = await supabase.from("jobs").select("*");
+
+    if (error) throw new Error(error.message);
+
+    return reply.send({ jobs });
+  } catch (error) {
+    console.error("Erro ao buscar vagas:", error);
+    return reply.status(500).send({ error: "Erro ao buscar vagas." });
+  }
+});
+
+
+// POST - Criar vaga de emprego
+app.post("/jobs", async (request, reply) => {
+  try {
+    const {
+      cargo,
+      salario,
+      local,
+      descricao,
+      requisitos,
+      beneficios,
+      horario,
+      regime_contratacao
+    } = request.body;
+
+    // Validação dos campos obrigatórios
+    if (
+      !cargo ||
+      !salario ||
+      !local ||
+      !descricao ||
+      !requisitos ||
+      !beneficios ||
+      !horario ||
+      !regime_contratacao
+    ) {
+      return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
+    }
+
+    // Inserção da vaga no Supabase
+    const { data: createdJob, error } = await supabase
+      .from("jobs")
+      .insert([{
+        cargo,
+        salario,
+        local,
+        descricao,
+        requisitos,
+        beneficios,
+        horario,
+        regime_contratacao
+      }])
+      .select();
+
+    // Tratamento de erro
+    if (error) return reply.status(400).send({ error: error.message });
+
+    // Retorno da vaga criada
+    return reply.status(201).send({ job: createdJob ? createdJob[0] : null });
+
+  } catch (error) {
+    console.error("Erro ao criar vaga:", error);
+    return reply.status(500).send({ error: "Erro ao criar vaga." });
+  }
+});
+
+// PUT - Editar vaga de emprego
+app.put("/jobs/:id", async (request, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+    const {
+      cargo,
+      salario,
+      local,
+      descricao,
+      requisitos,
+      beneficios,
+      horario,
+      regime_contratacao
+    } = request.body;
+
+    // Validação
+    if (
+      !cargo ||
+      !salario ||
+      !local ||
+      !descricao ||
+      !requisitos ||
+      !beneficios ||
+      !horario ||
+      !regime_contratacao
+    ) {
+      return reply.status(400).send({ error: "Todos os campos são obrigatórios para atualização." });
+    }
+
+    const { data: updatedJob, error } = await supabase
+      .from("jobs")
+      .update({
+        cargo,
+        salario,
+        local,
+        descricao,
+        requisitos,
+        beneficios,
+        horario,
+        regime_contratacao
+      })
+      .eq("id", id)
+      .select();
+
+    if (error) return reply.status(400).send({ error: error.message });
+
+    return reply.send({ job: updatedJob ? updatedJob[0] : null });
+  } catch (error) {
+    console.error("Erro ao atualizar vaga:", error);
+    return reply.status(500).send({ error: "Erro ao atualizar vaga." });
+  }
+});
+
+// DELETE - Deletar vaga de emprego
+app.delete("/jobs/:id", async (request, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+
+    const numericId = Number(id);
+    if (isNaN(numericId)) {
+      return reply.status(400).send({ error: "ID inválido." });
+    }
+
+    const { data: deletedJob, error } = await supabase
+      .from("jobs")
+      .delete()
+      .eq("id", numericId)
+      .select();
+
+    if (error) return reply.status(400).send({ error: error.message });
+
+    if (!deletedJob || deletedJob.length === 0) {
+      return reply.status(404).send({ error: "Vaga não encontrada." });
+    }
+
+    return reply.send({ message: "Vaga excluída com sucesso!", job: deletedJob[0] });
+  } catch (error) {
+    console.error("Erro ao excluir vaga:", error);
+    return reply.status(500).send({ error: "Erro ao excluir vaga." });
+  }
+});
+
+// GET - Buscar candidaturas
+app.get("/job-applications", async (request, reply) => {
+  try {
+    const { data: applications, error } = await supabase
+      .from("job_applications")
+      .select("*");
+
+    if (error) throw new Error(error.message);
+
+    return reply.send({ applications });
+  } catch (error) {
+    console.error("Erro ao buscar candidaturas:", error);
+    return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
+  }
+});
+
+// POST - Cadastrar candidatura em uma vaga
+app.post("/job-applications", async (request, reply) => {
+  try {
+    const { job_id, name, email, phone, resume_url } = request.body;
+
+    if (!job_id || !name || !email || !phone) {
+      return reply.status(400).send({ error: "Todos os campos obrigatórios devem ser preenchidos." });
+    }
+
+    const { data: application, error } = await supabase
+      .from("job_applications")
+      .insert([{ job_id, name, email, phone, resume_url }])
+      .select();
+
+    if (error) return reply.status(400).send({ error: error.message });
+
+    return reply.status(201).send({ application: application[0] });
+  } catch (error) {
+    console.error("Erro ao cadastrar candidatura:", error);
+    return reply.status(500).send({ error: "Erro ao cadastrar candidatura." });
+  }
+});
+
+
+
 // Start do servidor
 app
   .listen({
