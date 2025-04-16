@@ -324,24 +324,20 @@ app.put("/jobs/:id", async (request, reply) => {
   }
 });
 app.delete("/jobs/:id", async (request, reply) => {
+  const { id } = request.params;
   try {
-    const { id } = request.params;
-    const numericId = Number(id);
-    if (isNaN(numericId)) {
-      return reply.status(400).send({ error: "ID inv\xE1lido." });
-    }
-    const { data, error } = await supabase.from("jobs").delete().eq("id", numericId);
+    const { data, error } = await supabase.from("jobs").delete().eq("id", id);
     if (error) {
-      console.error("Erro ao excluir vaga:", error);
+      console.error("Erro ao excluir a vaga:", error);
       return reply.status(500).send({ error: "Erro ao excluir vaga." });
     }
-    if (!data || data.length === 0) {
+    if (data && data.length === 0) {
       return reply.status(404).send({ error: "Vaga n\xE3o encontrada." });
     }
-    return reply.send({ message: "Vaga exclu\xEDda com sucesso!", job: data[0] });
+    return reply.status(200).send({ message: "Vaga exclu\xEDda com sucesso." });
   } catch (error) {
-    console.error("Erro ao excluir vaga:", error);
-    return reply.status(500).send({ error: "Erro ao excluir vaga." });
+    console.error("Erro ao excluir a vaga:", error);
+    return reply.status(500).send({ error: "Erro ao excluir a vaga." });
   }
 });
 app.get("/job-applications", async (request, reply) => {

@@ -443,38 +443,32 @@ app.put("/jobs/:id", async (request, reply) => {
 });
 
 // DELETE - Deletar vaga de emprego
-app.delete("/jobs/:id", async (request, reply) => {
+app.delete('/jobs/:id', async (request, reply) => {
+  const { id } = request.params;
+
   try {
-    const { id } = request.params as { id: string };
-
-    // Validando se o ID é numérico
-    const numericId = Number(id);
-    if (isNaN(numericId)) {
-      return reply.status(400).send({ error: "ID inválido." });
-    }
-
-    // Realizando a exclusão da vaga no Supabase
+    // Tentando excluir a vaga com o ID fornecido
     const { data, error } = await supabase
-      .from("jobs")
+      .from('jobs')
       .delete()
-      .eq("id", numericId);
+      .eq('id', id);
 
-    // Tratando o erro, se houver
+    // Se houver erro ao tentar excluir
     if (error) {
-      console.error("Erro ao excluir vaga:", error);
-      return reply.status(500).send({ error: "Erro ao excluir vaga." });
+      console.error('Erro ao excluir a vaga:', error);
+      return reply.status(500).send({ error: 'Erro ao excluir vaga.' });
     }
 
-    // Se não retornar dados, significa que a vaga não foi encontrada
-    if (!data || data.length === 0) {
-      return reply.status(404).send({ error: "Vaga não encontrada." });
+    // Se não encontrar nenhuma vaga para excluir
+    if (data && data.length === 0) {
+      return reply.status(404).send({ error: 'Vaga não encontrada.' });
     }
 
-    // Caso contrário, retornar a mensagem de sucesso
-    return reply.send({ message: "Vaga excluída com sucesso!", job: data[0] });
+    // Se a vaga foi excluída com sucesso
+    return reply.status(200).send({ message: 'Vaga excluída com sucesso.' });
   } catch (error) {
-    console.error("Erro ao excluir vaga:", error);
-    return reply.status(500).send({ error: "Erro ao excluir vaga." });
+    console.error('Erro ao excluir a vaga:', error);
+    return reply.status(500).send({ error: 'Erro ao excluir a vaga.' });
   }
 });
 
