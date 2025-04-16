@@ -349,13 +349,20 @@ app.get("/job-applications", async (request, reply) => {
       throw new Error(error.message);
     }
     const jobIds = applications.map((app2) => app2.job_id);
-    const { data: jobs, jobError } = await supabase.from("job").select("*").in("id", jobIds);
+    const { data: jobs, error: jobError } = await supabase.from("job").select("*").in("id", jobIds);
     if (jobError) {
       console.error("Erro ao buscar jobs:", jobError);
       throw new Error(jobError.message);
     }
+    if (!Array.isArray(jobs)) {
+      console.error("Erro: jobs n\xE3o \xE9 um array v\xE1lido.");
+      return reply.status(500).send({ error: "Erro ao buscar os jobs." });
+    }
     const result = applications.map((app2) => {
       const job = jobs.find((job2) => job2.id === app2.job_id);
+      if (!job) {
+        console.error(`Job n\xE3o encontrado para o job_id ${app2.job_id}`);
+      }
       return { ...app2, job };
     });
     return reply.send({ applications: result });

@@ -471,7 +471,6 @@ app.delete("/jobs/:id", async (request, reply) => {
   }
 });
 
-
 // GET - Buscar candidaturas
 app.get("/job-applications", async (request, reply) => {
   try {
@@ -486,7 +485,7 @@ app.get("/job-applications", async (request, reply) => {
 
     // Agora, faça uma consulta separada para os trabalhos
     const jobIds = applications.map(app => app.job_id);
-    const { data: jobs, jobError } = await supabase
+    const { data: jobs, error: jobError } = await supabase
       .from("job")
       .select("*")
       .in("id", jobIds); // Obtém todos os jobs com base nos job_ids
@@ -496,9 +495,20 @@ app.get("/job-applications", async (request, reply) => {
       throw new Error(jobError.message);
     }
 
+    // Verifique se `jobs` é um array válido
+    if (!Array.isArray(jobs)) {
+      console.error("Erro: jobs não é um array válido.");
+      return reply.status(500).send({ error: "Erro ao buscar os jobs." });
+    }
+
     // Junte os dados das candidaturas e dos jobs
     const result = applications.map(app => {
       const job = jobs.find(job => job.id === app.job_id);
+      
+      if (!job) {
+        console.error(`Job não encontrado para o job_id ${app.job_id}`);
+      }
+      
       return { ...app, job };
     });
 
@@ -508,10 +518,6 @@ app.get("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
-
-
-
-
 
 // POST - Criar candidaturas
 app.post('/job-applications', async (request, reply) => {
