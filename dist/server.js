@@ -392,6 +392,25 @@ app.post("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao processar a candidatura." });
   }
 });
+app.delete("/job-applications/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    if (!id) {
+      return reply.status(400).send({ error: "ID da candidatura n\xE3o fornecido." });
+    }
+    const { data, error } = await supabase.from("jobApplications").delete().match({ id });
+    if (error) {
+      return reply.status(500).send({ error: "Erro ao excluir candidatura." });
+    }
+    if (data.length === 0) {
+      return reply.status(404).send({ error: "Candidatura n\xE3o encontrada." });
+    }
+    return reply.status(200).send({ message: "Candidatura exclu\xEDda com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao excluir candidatura:", error);
+    return reply.status(500).send({ error: "Erro ao excluir candidatura." });
+  }
+});
 app.listen({
   host: "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 3333
