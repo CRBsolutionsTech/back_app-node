@@ -343,7 +343,7 @@ app.delete("/jobs/:id", async (request, reply) => {
 });
 app.get("/job-applications", async (request, reply) => {
   try {
-    const { data: applications, error } = await supabase.from("jobApplications").select("*");
+    const { data: applications, error } = await supabase.from("jobApplications").select("*, job(*)");
     if (error) throw new Error(error.message);
     return reply.send({ applications });
   } catch (error) {
