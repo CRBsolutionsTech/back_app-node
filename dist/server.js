@@ -343,9 +343,22 @@ app.delete("/jobs/:id", async (request, reply) => {
 });
 app.get("/job-applications", async (request, reply) => {
   try {
-    const { data: applications, error } = await supabase.from("jobApplications").select("*, job(*)");
-    if (error) throw new Error(error.message);
-    return reply.send({ applications });
+    const { data: applications, error } = await supabase.from("jobApplications").select("*");
+    if (error) {
+      console.error("Erro ao buscar candidaturas:", error);
+      throw new Error(error.message);
+    }
+    const jobIds = applications.map((app2) => app2.job_id);
+    const { data: jobs, jobError } = await supabase.from("job").select("*").in("id", jobIds);
+    if (jobError) {
+      console.error("Erro ao buscar jobs:", jobError);
+      throw new Error(jobError.message);
+    }
+    const result = applications.map((app2) => {
+      const job = jobs.find((job2) => job2.id === app2.job_id);
+      return { ...app2, job };
+    });
+    return reply.send({ applications: result });
   } catch (error) {
     console.error("Erro ao buscar candidaturas:", error);
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });

@@ -477,16 +477,40 @@ app.get("/job-applications", async (request, reply) => {
   try {
     const { data: applications, error } = await supabase
       .from("jobApplications")
-      .select("*, job(*)");  // 'job(*)' faz o join com a tabela 'jobs' e seleciona todas as colunas dessa tabela
+      .select("*");
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Erro ao buscar candidaturas:", error);
+      throw new Error(error.message);
+    }
 
-    return reply.send({ applications });
+    // Agora, faça uma consulta separada para os trabalhos
+    const jobIds = applications.map(app => app.job_id);
+    const { data: jobs, jobError } = await supabase
+      .from("job")
+      .select("*")
+      .in("id", jobIds); // Obtém todos os jobs com base nos job_ids
+
+    if (jobError) {
+      console.error("Erro ao buscar jobs:", jobError);
+      throw new Error(jobError.message);
+    }
+
+    // Junte os dados das candidaturas e dos jobs
+    const result = applications.map(app => {
+      const job = jobs.find(job => job.id === app.job_id);
+      return { ...app, job };
+    });
+
+    return reply.send({ applications: result });
   } catch (error) {
     console.error("Erro ao buscar candidaturas:", error);
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
+
+
+
 
 
 // POST - Criar candidaturas
