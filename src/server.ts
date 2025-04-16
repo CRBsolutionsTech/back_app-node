@@ -472,28 +472,11 @@ app.delete("/jobs/:id", async (request, reply) => {
 });
 
 // // GET - Buscar candidaturas
-// app.get("/job-applications", async (request, reply) => {
-//   try {
-//     const { data: applications, error } = await supabase
-//       .from("jobApplications")
-//       .select("*");
-
-//     if (error) throw new Error(error.message);
-
-//     return reply.send({ applications });
-//   } catch (error) {
-//     console.error("Erro ao buscar candidaturas:", error);
-//     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
-//   }
-// });
-
-// GET - Buscar candidaturas com o nome do cargo
 app.get("/job-applications", async (request, reply) => {
   try {
     const { data: applications, error } = await supabase
       .from("jobApplications")
-      .select("*, jobs(name)")  // Seleciona os dados de jobApplications e o nome do cargo da tabela jobs
-      .join("jobs", "jobApplications.job_id", "jobs.id"); // Faz a junção entre jobApplications e jobs
+      .select("*");
 
     if (error) throw new Error(error.message);
 
@@ -503,6 +486,23 @@ app.get("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
+
+// GET - Buscar candidaturas com o nome do cargo
+// app.get("/job-applications", async (request, reply) => {
+//   try {
+//     const { data: applications, error } = await supabase
+//       .from("jobApplications")
+//       .select("*, jobs(name)")  // Seleciona os dados de jobApplications e o nome do cargo da tabela jobs
+//       .join("jobs", "jobApplications.job_id", "jobs.id"); // Faz a junção entre jobApplications e jobs
+
+//     if (error) throw new Error(error.message);
+
+//     return reply.send({ applications });
+//   } catch (error) {
+//     console.error("Erro ao buscar candidaturas:", error);
+//     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
+//   }
+// });
 
 
 // POST - Criar candidaturas
