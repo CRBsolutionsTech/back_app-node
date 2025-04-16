@@ -241,6 +241,23 @@ app.get("/jobs", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar vagas." });
   }
 });
+app.get("/jobs/:id", async (request, reply) => {
+  const { id } = request.params;
+  const numericId = Number(id);
+  if (isNaN(numericId)) {
+    return reply.status(400).send({ error: "ID inv\xE1lido." });
+  }
+  try {
+    const { data: job, error } = await supabase.from("jobs").select("*").eq("id", numericId).single();
+    if (error) {
+      return reply.status(404).send({ error: "Vaga n\xE3o encontrada." });
+    }
+    return reply.send({ job });
+  } catch (error) {
+    console.error("Erro ao buscar vaga por ID:", error);
+    return reply.status(500).send({ error: "Erro ao buscar vaga." });
+  }
+});
 app.post("/jobs", async (request, reply) => {
   try {
     const {

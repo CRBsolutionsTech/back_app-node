@@ -306,6 +306,33 @@ app.get("/jobs", async (request, reply) => {
   }
 });
 
+// GET - Buscar vaga específica por ID
+app.get("/jobs/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+
+  const numericId = Number(id);
+  if (isNaN(numericId)) {
+    return reply.status(400).send({ error: "ID inválido." });
+  }
+
+  try {
+    const { data: job, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("id", numericId)
+      .single();
+
+    if (error) {
+      return reply.status(404).send({ error: "Vaga não encontrada." });
+    }
+
+    return reply.send({ job });
+  } catch (error) {
+    console.error("Erro ao buscar vaga por ID:", error);
+    return reply.status(500).send({ error: "Erro ao buscar vaga." });
+  }
+});
+
 
 // POST - Criar vaga de emprego
 app.post("/jobs", async (request, reply) => {
