@@ -569,11 +569,14 @@ app.delete('/job-applications/:id', async (request, reply) => {
       .delete()
       .eq('id', id);
 
+    // Se houver erro ao tentar excluir
     if (error) {
-      return reply.status(500).send({ error: 'Erro ao excluir a candidatura.' });
+      console.log('Erro ao excluir candidatura:', error);
+      return reply.status(500).send({ error: 'Erro ao excluir candidatura.' });
     }
 
-    if (!data || data.length === 0) {
+    // Verifique se não encontrou a candidatura para excluir
+    if (data.length === 0) {
       return reply.status(404).send({ error: 'Candidatura não encontrada.' });
     }
 
@@ -584,8 +587,6 @@ app.delete('/job-applications/:id', async (request, reply) => {
     return reply.status(500).send({ error: 'Erro ao excluir candidatura.' });
   }
 });
-
-
 
 
 
