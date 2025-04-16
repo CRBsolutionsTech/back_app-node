@@ -580,8 +580,8 @@ app.delete('/job-applications/:id', async (request, reply) => {
       return reply.status(500).send({ error: 'Erro ao excluir candidatura.' });
     }
 
-    // Se a candidatura não for encontrada
-    if (data.length === 0) {
+    // Verificando se algum dado foi excluído
+    if (!data || data.length === 0) {
       return reply.status(404).send({ error: 'Candidatura não encontrada.' });
     }
 

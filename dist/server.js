@@ -402,7 +402,7 @@ app.delete("/job-applications/:id", async (request, reply) => {
     if (error) {
       return reply.status(500).send({ error: "Erro ao excluir candidatura." });
     }
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
       return reply.status(404).send({ error: "Candidatura n\xE3o encontrada." });
     }
     return reply.status(200).send({ message: "Candidatura exclu\xEDda com sucesso!" });
