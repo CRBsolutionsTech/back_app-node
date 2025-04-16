@@ -474,19 +474,26 @@ app.delete("/jobs/:id", async (request, reply) => {
 // GET - Buscar candidaturas
 app.get("/job-applications", async (request, reply) => {
   try {
-    const { data: applications, error } = await supabase
+    // Buscar candidaturas
+    const { data: applications, error: appError } = await supabase
       .from("jobApplications")
       .select("*");
 
-    if (error) {
-      console.error("Erro ao buscar candidaturas:", error);
-      throw new Error(error.message);
+    if (appError) {
+      console.error("Erro ao buscar candidaturas:", appError);
+      throw new Error(appError.message);
     }
 
-    // Agora, faça uma consulta separada para os trabalhos
+    // Verifique se há candidaturas retornadas
+    if (!applications || applications.length === 0) {
+      console.error("Nenhuma candidatura encontrada.");
+      return reply.status(404).send({ error: "Nenhuma candidatura encontrada." });
+    }
+
+    // Obter os ids dos jobs relacionados
     const jobIds = applications.map(app => app.job_id);
     const { data: jobs, error: jobError } = await supabase
-      .from("job")
+      .from("jobs")  // Corrigido para 'jobs' em vez de 'job'
       .select("*")
       .in("id", jobIds); // Obtém todos os jobs com base nos job_ids
 
@@ -501,14 +508,15 @@ app.get("/job-applications", async (request, reply) => {
       return reply.status(500).send({ error: "Erro ao buscar os jobs." });
     }
 
-    // Junte os dados das candidaturas e dos jobs
+    // Juntar dados de candidaturas e jobs
     const result = applications.map(app => {
       const job = jobs.find(job => job.id === app.job_id);
       
       if (!job) {
         console.error(`Job não encontrado para o job_id ${app.job_id}`);
+        return { ...app, job: null };  // Caso não encontre o job, insira 'null'
       }
-      
+
       return { ...app, job };
     });
 
@@ -518,6 +526,7 @@ app.get("/job-applications", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao buscar candidaturas." });
   }
 });
+
 
 // POST - Criar candidaturas
 app.post('/job-applications', async (request, reply) => {
