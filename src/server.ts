@@ -558,12 +558,13 @@ app.post('/job-applications', async (request, reply) => {
   }
 });
 
+
 // Rota para excluir uma candidatura
 app.delete('/job-applications/:id', async (request, reply) => {
   const { id } = request.params;
 
   try {
-    // Tente excluir a candidatura com o ID fornecido
+    // Tentando excluir a candidatura com o ID fornecido
     const { data, error } = await supabase
       .from('jobApplications')
       .delete()
@@ -571,22 +572,23 @@ app.delete('/job-applications/:id', async (request, reply) => {
 
     // Se houver erro ao tentar excluir
     if (error) {
-      console.log('Erro ao excluir candidatura:', error);
+      console.error('Erro ao excluir candidatura:', error);
       return reply.status(500).send({ error: 'Erro ao excluir candidatura.' });
     }
 
-    // Verifique se não encontrou a candidatura para excluir
-    if (data.length === 0) {
+    // Se não encontrar nenhuma candidatura para excluir
+    if (data && data.length === 0) {
       return reply.status(404).send({ error: 'Candidatura não encontrada.' });
     }
 
-    // Responder com sucesso
+    // Se a candidatura foi excluída com sucesso
     return reply.status(200).send({ message: 'Candidatura excluída com sucesso.' });
   } catch (error) {
     console.error('Erro ao excluir candidatura:', error);
     return reply.status(500).send({ error: 'Erro ao excluir candidatura.' });
   }
 });
+
 
 
 
