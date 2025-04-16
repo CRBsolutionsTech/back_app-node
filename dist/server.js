@@ -330,12 +330,15 @@ app.delete("/jobs/:id", async (request, reply) => {
     if (isNaN(numericId)) {
       return reply.status(400).send({ error: "ID inv\xE1lido." });
     }
-    const { data: deletedJob, error } = await supabase.from("jobs").delete().eq("id", numericId).select();
-    if (error) return reply.status(400).send({ error: error.message });
-    if (!deletedJob || deletedJob.length === 0) {
+    const { data, error } = await supabase.from("jobs").delete().eq("id", numericId);
+    if (error) {
+      console.error("Erro ao excluir vaga:", error);
+      return reply.status(500).send({ error: "Erro ao excluir vaga." });
+    }
+    if (!data || data.length === 0) {
       return reply.status(404).send({ error: "Vaga n\xE3o encontrada." });
     }
-    return reply.send({ message: "Vaga exclu\xEDda com sucesso!", job: deletedJob[0] });
+    return reply.send({ message: "Vaga exclu\xEDda com sucesso!", job: data[0] });
   } catch (error) {
     console.error("Erro ao excluir vaga:", error);
     return reply.status(500).send({ error: "Erro ao excluir vaga." });
