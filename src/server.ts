@@ -16,6 +16,7 @@ app.register(cors, {
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 });
+app.register(require('./routes/upload.js'));
 
 const SECRET_KEY = "seu_segredo_super_seguro";
 

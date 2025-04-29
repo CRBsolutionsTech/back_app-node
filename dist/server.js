@@ -5,6 +5,9 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __commonJS = (cb, mod) => function __require() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -21,6 +24,68 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+
+// src/routes/upload.js
+var require_upload = __commonJS({
+  "src/routes/upload.js"(exports2, module2) {
+    "use strict";
+    var path = require("path");
+    var { createClient: createClient2 } = require("@supabase/supabase-js");
+    var fs = require("fs/promises");
+    var crypto = require("crypto");
+    var supabase2 = createClient2(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_KEY
+    );
+    async function jobApplicationUploadRoute(fastify2, options) {
+      fastify2.register(require("@fastify/multipart"));
+      fastify2.post("/job-applications/upload", async (req, reply) => {
+        const parts = req.parts();
+        let fields = {};
+        let fileBuffer = null;
+        let fileName = null;
+        let fileExt = null;
+        for await (const part of parts) {
+          if (part.type === "file" && part.fieldname === "curriculo") {
+            fileName = part.filename;
+            fileExt = path.extname(fileName);
+            fileBuffer = await part.toBuffer();
+          } else if (part.type === "field") {
+            fields[part.fieldname] = part.value;
+          }
+        }
+        if (!fileBuffer) {
+          return reply.code(400).send({ error: "Curr\xEDculo n\xE3o enviado" });
+        }
+        const uniqueName = `${Date.now()}-${crypto.randomUUID()}${fileExt}`;
+        const uploadPath = `curriculos/${uniqueName}`;
+        const { data, error: uploadError } = await supabase2.storage.from("curriculos").upload(uploadPath, fileBuffer, {
+          contentType: "application/octet-stream",
+          upsert: false
+        });
+        if (uploadError) {
+          console.error(uploadError);
+          return reply.code(500).send({ error: "Erro ao salvar curr\xEDculo no Supabase" });
+        }
+        const { data: urlData } = supabase2.storage.from("curriculos").getPublicUrl(uploadPath);
+        const insertPayload = {
+          name: fields.name,
+          email: fields.email,
+          phone: fields.phone,
+          job_id: parseInt(fields.job_id),
+          curriculo_url: urlData.publicUrl
+        };
+        const { error: dbError } = await supabase2.from("job_applications").insert([insertPayload]);
+        if (dbError) {
+          console.error(dbError);
+          return reply.code(500).send({ error: "Erro ao salvar candidatura no banco" });
+        }
+        reply.send({ message: "Candidatura enviada com sucesso!" });
+      });
+    }
+    module2.exports = jobApplicationUploadRoute;
+  }
+});
 
 // src/server.ts
 var import_fastify = __toESM(require("fastify"));
@@ -57,6 +122,7 @@ app.register(import_cors.default, {
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 });
+app.register(require_upload());
 var SECRET_KEY = "seu_segredo_super_seguro";
 var hashPassword = async (password) => {
   return await import_bcryptjs.default.hash(password, 10);
