@@ -113,6 +113,37 @@ app.put("/users/:cpf", async (request, reply) => {
   }
 });
 
+// DELETE - Excluir usuário
+app.delete("/users/:cpf", async (request, reply) => {
+  try {
+    const { cpf } = request.params as { cpf: string };
+
+    if (!cpf) {
+      return reply.status(400).send({ error: "CPF é obrigatório para exclusão." });
+    }
+
+    const { data: deletedUser, error } = await supabase
+      .from("users")
+      .delete()
+      .eq("cpf", cpf)
+      .select();
+
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
+
+    if (!deletedUser || deletedUser.length === 0) {
+      return reply.status(404).send({ error: "Usuário não encontrado." });
+    }
+
+    return reply.send({ message: "Usuário excluído com sucesso!", user: deletedUser[0] });
+  } catch (error) {
+    console.error("Erro ao excluir usuário:", error);
+    return reply.status(500).send({ error: "Erro ao excluir usuário." });
+  }
+});
+
+
 // POST - Login
 app.post("/login", async (request, reply) => {
   try {

@@ -121,6 +121,25 @@ app.put("/users/:cpf", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao atualizar usu\xE1rio." });
   }
 });
+app.delete("/users/:cpf", async (request, reply) => {
+  try {
+    const { cpf } = request.params;
+    if (!cpf) {
+      return reply.status(400).send({ error: "CPF \xE9 obrigat\xF3rio para exclus\xE3o." });
+    }
+    const { data: deletedUser, error } = await supabase.from("users").delete().eq("cpf", cpf).select();
+    if (error) {
+      return reply.status(400).send({ error: error.message });
+    }
+    if (!deletedUser || deletedUser.length === 0) {
+      return reply.status(404).send({ error: "Usu\xE1rio n\xE3o encontrado." });
+    }
+    return reply.send({ message: "Usu\xE1rio exclu\xEDdo com sucesso!", user: deletedUser[0] });
+  } catch (error) {
+    console.error("Erro ao excluir usu\xE1rio:", error);
+    return reply.status(500).send({ error: "Erro ao excluir usu\xE1rio." });
+  }
+});
 app.post("/login", async (request, reply) => {
   try {
     const { cpf, password } = request.body;
