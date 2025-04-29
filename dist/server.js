@@ -427,41 +427,6 @@ app.delete("/job-applications/:id", async (request, reply) => {
     return reply.status(500).send({ error: "Erro ao excluir candidatura." });
   }
 });
-app.post("/job-applications/upload", async (request, reply) => {
-  const parts = request.parts();
-  let fileBuffer = null;
-  let filename = "";
-  let mimetype = "";
-  const fields = {};
-  for await (const part of parts) {
-    if (part.type === "file") {
-      filename = `${Date.now()}-${part.filename}`;
-      mimetype = part.mimetype;
-      fileBuffer = await part.toBuffer();
-    } else {
-      fields[part.fieldname] = part.value;
-    }
-  }
-  if (!fileBuffer || !filename) {
-    return reply.status(400).send({ error: "O arquivo do curr\xEDculo n\xE3o foi enviado corretamente." });
-  }
-  const { data: uploadData, error: uploadError } = await supabase.storage.from("curriculos").upload(filename, fileBuffer, { contentType: mimetype });
-  if (uploadError) {
-    console.error("Erro ao salvar arquivo no Supabase:", uploadError);
-    return reply.status(500).send({ error: "Erro ao salvar arquivo no Supabase." });
-  }
-  const resumeUrl = `https://fsazoshvbyzxghxuohdd.supabase.co/storage/v1/object/public/curriculos/${filename}`;
-  const { data, error } = await supabase.from("job_applications").insert([
-    {
-      job_id: fields.job_id,
-      name: fields.name,
-      email: fields.email,
-      phone: fields.phone,
-      resume_url: resumeUrl
-    }
-  ]).select();
-  return error ? reply.status(500).send({ error: error.message }) : reply.status(201).send({ application: data?.[0] });
-});
 app.listen({
   host: "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 3333
