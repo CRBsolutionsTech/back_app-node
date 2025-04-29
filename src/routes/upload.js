@@ -1,7 +1,6 @@
 // routes/jobApplications/upload.js
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs/promises');
 const crypto = require('crypto');
 
 const supabase = createClient(
@@ -10,7 +9,8 @@ const supabase = createClient(
 );
 
 async function jobApplicationUploadRoute(fastify, options) {
-  fastify.register(require('@fastify/multipart'));
+  // ❌ NÃO registre novamente multipart aqui se já foi registrado no server.ts
+  // await fastify.register(require('@fastify/multipart'));
 
   fastify.post('/job-applications/upload', async (req, reply) => {
     const parts = req.parts();

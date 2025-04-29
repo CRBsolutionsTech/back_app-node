@@ -3,14 +3,12 @@
 // src/routes/upload.js
 var path = require("path");
 var { createClient } = require("@supabase/supabase-js");
-var fs = require("fs/promises");
 var crypto = require("crypto");
 var supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 async function jobApplicationUploadRoute(fastify, options) {
-  fastify.register(require("@fastify/multipart"));
   fastify.post("/job-applications/upload", async (req, reply) => {
     const parts = req.parts();
     let fields = {};

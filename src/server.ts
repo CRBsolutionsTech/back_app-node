@@ -1,219 +1,135 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
-import fastifyMultipart from '@fastify/multipart';  // Importando corretamente o fastifyMultipart
+import fastifyMultipart from '@fastify/multipart';
 import { supabase } from './supabaseConnection';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const app = fastify({
-  logger: true,
+const app = fastify({ logger: true });
+
+app.register(fastifyMultipart);
+app.register(cors, {
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 });
 
-app.register(fastifyMultipart);  // Registrando o plugin de multipart
-app.register(cors, {
-  origin: '*',  // Permite todas as origens, ou defina o domínio específico
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-});
 app.register(require('./routes/upload.js'));
 
 const SECRET_KEY = "seu_segredo_super_seguro";
 
-// Função para hash de senha
-const hashPassword = async (password: string) => {
-  return await bcrypt.hash(password, 10);
-};
+const hashPassword = async (password) => await bcrypt.hash(password, 10);
+const comparePassword = async (password, hashedPassword) => await bcrypt.compare(password, hashedPassword);
 
-// Função para comparar senha
-const comparePassword = async (password: string, hashedPassword: string) => {
-  return await bcrypt.compare(password, hashedPassword);
-};
+app.get("/", async (_, reply) => reply.send({ message: "🚀 API Fastify rodando com sucesso!" }));
 
-// Rota principal
-app.get("/", async (request, reply) => {
-  return reply.send({ message: "🚀 API Fastify rodando com sucesso!" });
-});
-
-// GET - Usuários
-app.get("/users", async (request, reply) => {
+app.get("/users", async (_, reply) => {
   try {
-    const { data: users, error } = await supabase.from("users").select("*");
-    if (error) throw new Error(error.message);
-
-    return reply.send({ users });
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) throw error;
+    reply.send({ users: data });
   } catch (error) {
     console.error("Erro ao buscar usuários:", error);
-    return reply.status(500).send({ error: "Erro ao buscar usuários." });
+    reply.status(500).send({ error: "Erro ao buscar usuários." });
   }
 });
 
-// POST - Criar usuário
 app.post("/users", async (request, reply) => {
   try {
-    const { name, email, password, registro, cpf, celular } = request.body as Users;
-
-    if (!name || !email || !password || !registro || !cpf || !celular) {
+    const { name, email, password, registro, cpf, celular } = request.body;
+    if (!name || !email || !password || !registro || !cpf || !celular)
       return reply.status(400).send({ error: "Todos os campos são obrigatórios." });
-    }
 
     const hashedPassword = await hashPassword(password);
-    const status = "1"; // valor padrão
-
-    const { data: createdUser, error } = await supabase
+    const { data, error } = await supabase
       .from("users")
-      .insert([{ name, email, password: hashedPassword, registro, cpf, celular, status }])
+      .insert([{ name, email, password: hashedPassword, registro, cpf, celular, status: "1" }])
       .select();
 
     if (error) return reply.status(400).send({ error: error.message });
-
-    return reply.status(201).send({ users: createdUser ? createdUser[0] : null });
+    reply.status(201).send({ users: data?.[0] || null });
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
-    return reply.status(500).send({ error: "Erro ao criar usuário." });
+    reply.status(500).send({ error: "Erro ao criar usuário." });
   }
 });
 
-// PUT - Atualizar usuário
 app.put("/users/:cpf", async (request, reply) => {
   try {
-    const { cpf } = request.params as { cpf: string };
-    const { name, email, password, registro, celular, status } = request.body as Partial<Users>;
-
+    const { cpf } = request.params;
+    const { name, email, password, registro, celular, status } = request.body;
     if (!cpf) return reply.status(400).send({ error: "CPF é obrigatório." });
 
-    let hashedPassword;
-    if (password) {
-      hashedPassword = await hashPassword(password);
-    }
-
-    const updateData: any = {
+    const updateData = {
       ...(name && { name }),
       ...(email && { email }),
-      ...(hashedPassword && { password: hashedPassword }),
+      ...(password && { password: await hashPassword(password) }),
       ...(registro && { registro }),
       ...(celular && { celular }),
       ...(status && { status })
     };
 
-    const { data: updatedUser, error } = await supabase
-      .from("users")
-      .update(updateData)
-      .eq("cpf", cpf)
-      .select();
-
+    const { data, error } = await supabase.from("users").update(updateData).eq("cpf", cpf).select();
     if (error) return reply.status(400).send({ error: error.message });
-    if (!updatedUser || updatedUser.length === 0) {
-      return reply.status(404).send({ error: "Usuário não encontrado." });
-    }
-
-    return reply.send({ message: "Usuário atualizado com sucesso!", user: updatedUser[0] });
+    if (!data?.length) return reply.status(404).send({ error: "Usuário não encontrado." });
+    reply.send({ message: "Usuário atualizado com sucesso!", user: data[0] });
   } catch (error) {
     console.error("Erro ao atualizar usuário:", error);
-    return reply.status(500).send({ error: "Erro ao atualizar usuário." });
+    reply.status(500).send({ error: "Erro ao atualizar usuário." });
   }
 });
 
-// DELETE - Excluir usuário
 app.delete("/users/:cpf", async (request, reply) => {
   try {
-    const { cpf } = request.params as { cpf: string };
+    const { cpf } = request.params;
+    if (!cpf) return reply.status(400).send({ error: "CPF é obrigatório para exclusão." });
 
-    if (!cpf) {
-      return reply.status(400).send({ error: "CPF é obrigatório para exclusão." });
-    }
-
-    const { data: deletedUser, error } = await supabase
-      .from("users")
-      .delete()
-      .eq("cpf", cpf)
-      .select();
-
-    if (error) {
-      return reply.status(400).send({ error: error.message });
-    }
-
-    if (!deletedUser || deletedUser.length === 0) {
-      return reply.status(404).send({ error: "Usuário não encontrado." });
-    }
-
-    return reply.send({ message: "Usuário excluído com sucesso!", user: deletedUser[0] });
+    const { data, error } = await supabase.from("users").delete().eq("cpf", cpf).select();
+    if (error) return reply.status(400).send({ error: error.message });
+    if (!data?.length) return reply.status(404).send({ error: "Usuário não encontrado." });
+    reply.send({ message: "Usuário excluído com sucesso!", user: data[0] });
   } catch (error) {
     console.error("Erro ao excluir usuário:", error);
-    return reply.status(500).send({ error: "Erro ao excluir usuário." });
+    reply.status(500).send({ error: "Erro ao excluir usuário." });
   }
 });
 
-
-// POST - Login
 app.post("/login", async (request, reply) => {
   try {
-    const { cpf, password } = request.body as { cpf: string; password: string };
+    const { cpf, password } = request.body;
+    if (!cpf || !password) return reply.status(400).send({ error: "CPF e senha são obrigatórios." });
 
-    if (!cpf || !password) {
-      return reply.status(400).send({ error: "CPF e senha são obrigatórios." });
-    }
+    const { data: user, error } = await supabase.from("users").select("cpf, password, name, email, status").eq("cpf", cpf).single();
+    if (error || !user) return reply.status(404).send({ error: "CPF não encontrado." });
 
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("cpf, password, name, email, status")
-      .eq("cpf", cpf)
-      .single();
-
-    if (userError || !user) {
-      return reply.status(404).send({ error: "CPF não encontrado." });
-    }
-
-    const passwordMatch = await comparePassword(password, user.password);
-    if (!passwordMatch) {
+    if (!await comparePassword(password, user.password))
       return reply.status(401).send({ error: "Senha incorreta." });
-    }
 
-    const token = jwt.sign(
-      { cpf: user.cpf, name: user.name, email: user.email, status: user.status },
-      SECRET_KEY,
-      { expiresIn: "1h" }
-    );
-
-    return reply.send({ message: "Login bem-sucedido!", token, user });
+    const token = jwt.sign({ cpf: user.cpf, name: user.name, email: user.email, status: user.status }, SECRET_KEY, { expiresIn: "1h" });
+    reply.send({ message: "Login bem-sucedido!", token, user });
   } catch (error) {
     console.error("Erro no login:", error);
-    return reply.status(500).send({ error: "Erro ao fazer login." });
+    reply.status(500).send({ error: "Erro ao fazer login." });
   }
 });
 
-// POST - Resetar senha
 app.post("/reset-password", async (request, reply) => {
   try {
-    const { email, newPassword } = request.body as { email: string; newPassword: string };
+    const { email, newPassword } = request.body;
+    if (!email || !newPassword) return reply.status(400).send({ error: "E-mail e nova senha são obrigatórios." });
 
-    if (!email || !newPassword) {
-      return reply.status(400).send({ error: "E-mail e nova senha são obrigatórios." });
-    }
-
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("email")
-      .eq("email", email)
-      .single();
-
-    if (userError || !user) {
-      return reply.status(404).send({ error: "Usuário não encontrado." });
-    }
+    const { data: user, error } = await supabase.from("users").select("email").eq("email", email).single();
+    if (error || !user) return reply.status(404).send({ error: "Usuário não encontrado." });
 
     const hashedPassword = await hashPassword(newPassword);
+    const updateError = await supabase.from("users").update({ password: hashedPassword }).eq("email", email);
 
-    const { error } = await supabase
-      .from("users")
-      .update({ password: hashedPassword })
-      .eq("email", email);
-
-    if (error) return reply.status(400).send({ error: error.message });
-
-    return reply.send({ message: "Senha redefinida com sucesso!" });
+    if (updateError.error) return reply.status(400).send({ error: updateError.error.message });
+    reply.send({ message: "Senha redefinida com sucesso!" });
   } catch (error) {
     console.error("Erro ao redefinir senha:", error);
-    return reply.status(500).send({ error: "Erro ao redefinir senha." });
+    reply.status(500).send({ error: "Erro ao redefinir senha." });
   }
 });
 
